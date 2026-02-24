@@ -42,7 +42,7 @@ body.no-scroll {
     align-items: flex-start;
 }
 
-/* サイドバー */
+/* --- サイドバー --- */
 .sidebar { 
     width: 280px;
     flex-shrink: 0; 
@@ -51,7 +51,8 @@ body.no-scroll {
     gap: 20px; 
     position: sticky;
     top: 20px;
-    max-height: 90vh;
+    /* 画面の高さに合わせてサイドバー全体だけをスクロールさせる */
+    height: calc(100vh - 40px);
     overflow-y: auto;
 }
 
@@ -64,78 +65,192 @@ body.no-scroll {
     border-radius: 3px;
 }
 
-/* メインコンテンツ */
+/* --- メインコンテンツ --- */
 .main-content {
     flex-grow: 1;
     min-width: 0;
 }
 
 /* =========================================
-   レスポンシブ (スマホ対応の強化)
+   スマホ専用のUI (PC時は非表示)
+   ========================================= */
+.mobile-warning {
+    display: none;
+}
+.mobile-header {
+    display: none;
+}
+.sidebar-overlay {
+    display: none;
+}
+.close-sidebar-btn {
+    display: none;
+}
+
+/* =========================================
+   レスポンシブ (スマホ対応)
    ========================================= */
 @media (max-width: 768px) {
     body {
-        padding: 10px; /* スマホでは画面端の余白を少し狭くする */
+        padding: 0;
+        background-color: #f9f9f9;
+    }
+
+    .mobile-warning {
+        display: block;
+        background-color: var(--accent-orange);
+        color: white;
+        text-align: center;
+        padding: 8px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        padding: 12px 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        position: sticky;
+        top: 0;
+        z-index: 900;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .hamburger-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        margin-right: 15px;
+        color: #333;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+    
+    .mobile-header-title {
+        font-weight: bold;
+        font-size: 16px;
+        color: var(--accent-color);
     }
 
     .container {
         flex-direction: column;
-        align-items: stretch; /* 横幅いっぱいに引き伸ばす */
+        align-items: stretch;
         gap: 15px;
+        padding: 15px;
     }
 
     .sidebar {
-        width: 100%;
-        position: static;
-        max-height: none;
+        position: fixed;
+        top: 0;
+        left: -320px;
+        width: 280px;
+        height: 100vh !important;
+        background: var(--bg-color);
+        z-index: 1000;
+        padding: 20px;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 15px rgba(0,0,0,0.2);
     }
     
-    .main-content {
-        width: 100%; /* メインコンテンツを100%広げる */
+    .sidebar.open {
+        left: 0;
     }
 
-    /* 上部のタブボタンをスマホサイズに */
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 990;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        backdrop-filter: blur(2px);
+    }
+    
+    .sidebar-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .close-sidebar-btn {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 32px;
+        text-align: right;
+        width: 100%;
+        cursor: pointer;
+        color: #999;
+        margin-bottom: 5px;
+        line-height: 1;
+    }
+
+    .main-content {
+        width: 100%;
+    }
+
     .main-nav {
         gap: 5px;
     }
+    
     .nav-btn {
         padding: 10px 5px;
-        font-size: 12px; /* 文字を小さくしてはみ出し防止 */
+        font-size: 12px;
         gap: 5px;
     }
 
-    /* 4つの統計ボックスをスマホサイズに */
     .stats-row {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 10px;
     }
+    
     .stat-box {
         padding: 15px 5px;
     }
+    
     .stat-val {
-        font-size: 22px; /* 数字を少し小さく */
+        font-size: 22px;
     }
 
-    /* コントロールバー（日付やプルダウン）を縦並びにして収める */
     .controls-bar {
-        flex-direction: column;
-        align-items: stretch; /* 横幅いっぱいに広げる */
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 10px !important;
         gap: 10px;
     }
+    
     .view-title {
-        justify-content: center; /* タイトルを中央寄せに */
+        justify-content: center !important;
+        flex-wrap: wrap;
+        font-size: 16px !important;
     }
+    
     select {
-        width: 100%; /* プルダウンを画面幅に合わせる */
+        width: 100% !important;
     }
 
-    /* ランキング表の余白調整 */
     .ranking-table td {
-        padding: 10px 5px;
+        padding: 8px 4px !important;
+        font-size: 12px !important;
     }
-
-    .archive-list {
-        max-height: 150px;
+    
+    .ranking-table td:nth-child(2) {
+        width: 100px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .bar-txt {
+        width: 45px !important;
+        font-size: 11px !important;
     }
 }
 
@@ -250,21 +365,19 @@ body.no-scroll {
     pointer-events: none;
 }
 
-/* カレンダー ヒートマップ色 */
 .lvl-1 { background: #e3f2fd; color: #1565c0; } 
 .lvl-2 { background: #90caf9; color: #0d47a1; } 
 .lvl-3 { background: #42a5f5; color: #fff; } 
 .lvl-4 { background: #1565c0; color: #fff; }
 
 /* =========================================
-   リスト (月別・期間)
+   リスト (月別・期間) - 内部スクロール完全排除
    ========================================= */
 .archive-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    max-height: 250px;
-    overflow-y: auto;
+    /* ここに高さ制限やスクロール設定は一切入れない */
 }
 
 .archive-item {
@@ -275,11 +388,19 @@ body.no-scroll {
     justify-content: space-between;
     align-items: center;
     font-size: 13px;
+    transition: 0.2s;
 }
 
 .archive-item:hover {
     background: #f9f9f9;
     color: var(--accent-color);
+}
+
+.archive-item.active {
+    background: #eaf6fd;
+    color: var(--accent-color);
+    font-weight: bold;
+    border-left: 4px solid var(--accent-color);
 }
 
 .archive-count {
@@ -500,7 +621,14 @@ select {
     padding: 12px 5px;
     text-align: center;
     cursor: pointer;
+    transition: 0.2s;
     border-top: 3px solid var(--c);
+}
+
+.m-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-color: var(--accent-color);
 }
 
 .m-icon {
@@ -520,6 +648,27 @@ select {
 .m-name {
     font-weight: bold;
     font-size: 12px;
+}
+
+.x-link {
+    text-decoration: none;
+    color: var(--twitter-blue);
+    font-size: 10px;
+    font-weight: bold;
+    transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: #f0f8ff;
+    margin-top: 6px;
+    word-break: break-all;
+}
+
+.x-link:hover {
+    background: var(--twitter-blue);
+    color: white;
 }
 
 .gen-header {
@@ -682,49 +831,3 @@ select {
 #recordContentArea {
     padding: 0;
 }
-
-/* =========================================
-   スマホ用 強制はみ出し防止コード (ここから)
-   ========================================= */
-@media screen and (max-width: 768px) {
-    /* コントロールバー（日付とプルダウン）を縦並びにする */
-    .controls-bar {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        padding: 10px !important;
-        gap: 10px;
-    }
-    
-    .view-title {
-        justify-content: center !important;
-        flex-wrap: wrap;
-        font-size: 16px !important;
-    }
-    
-    .controls-bar select {
-        width: 100% !important;
-    }
-
-    /* ランキング表の余白と幅をスマホサイズに圧縮する */
-    .ranking-table td {
-        padding: 8px 4px !important;
-        font-size: 12px !important;
-    }
-
-    /* 名前カラムの幅（140px固定）を解除して縮める */
-    .ranking-table td:nth-child(2) {
-        width: 100px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* 右端の数字エリアの幅を縮める */
-    .bar-txt {
-        width: 45px !important;
-        font-size: 11px !important;
-    }
-}
-/* =========================================
-   スマホ用 強制はみ出し防止コード (ここまで)
-   ========================================= */

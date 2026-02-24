@@ -17,8 +17,22 @@
 
 <div id="loadingMask">Loading data...</div>
 
+<div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
+
+<div class="mobile-header">
+    <button id="hamburgerBtn" class="hamburger-btn">
+        <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <div class="mobile-header-title">📊 日向坂46 Message</div>
+</div>
+
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+
 <div class="container">
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+        
+        <button id="closeSidebarBtn" class="close-sidebar-btn">×</button>
+
         <div class="card">
             <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" style="font-size:12px; color:#888;"></span></div>
             <div class="calendar-widget">
@@ -78,7 +92,6 @@
                         <button class="title-nav-btn" id="btnPrevPeriod">◀</button>
                         <span id="pageTitle">読み込み中...</span>
                         <button class="title-nav-btn" id="btnNextPeriod">▶</button>
-                        <span id="pageBadge" class="view-badge">Monthly</span>
                     </div>
                     <select id="genSelector"></select>
                 </div>
@@ -94,16 +107,23 @@
                 <div class="controls-bar">
                     <div class="view-title">🏆 記録</div>
                     <select id="recordTypeSelector">
-                        <option value="wins">1位獲得回数 (Daily)</option>
-                        <option value="daily_max">歴代最多送信数 (1日)</option>
-                        <option value="monthly_max">月間最多送信数 (1ヶ月)</option>
-                        <option value="total">👑 通算送信数ランキング</option>
-                        <option value="streak">🔥 連日送信記録 (Max Streak)</option>
-                        <option value="average">📊 1日平均送信数 (Average)</option>
-                        <option value="active_rate">📅 稼働率ランキング (Active %)</option>
-                        <option value="high_volume">💌 2桁送信回数 (10通以上の日)</option>
-                        <option value="perfect_months">📅 皆勤賞月数 (Perfect Months)</option>
-                        <option value="top3">🥉 表彰台獲得回数 (Top 3)</option>
+                        <optgroup label="▼ 日次記録 (Daily)">
+                            <option value="daily_max">🔥 最多送信数</option>
+                            <option value="wins">🥇 1位獲得回数</option>
+                            <option value="top3">🥉 Top3回数</option>
+                            <option value="streak">🚀 連続送信日数</option>
+                            <option value="high_volume">💌 2桁送信回数</option>
+                        </optgroup>
+                        <optgroup label="▼ 月間記録 (Monthly)">
+                            <option value="monthly_max">👑 最多送信数</option>
+                            <option value="monthly_wins">🥇 1位獲得回数</option>
+                            <option value="perfect_months">📅 皆勤賞数</option>
+                        </optgroup>
+                        <optgroup label="▼ 通算記録 (Total)">
+                            <option value="total">🏆 最多送信数</option>
+                            <option value="average">📊 平均送信数</option>
+                            <option value="active_rate">📈 アクティブ率</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div id="recordContentArea"></div>

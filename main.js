@@ -24,7 +24,6 @@ window.onload = () => {
         allLogs = logs; 
         allMembers = members; 
         
-        // ★安全対策: メンバーマップ作成 & デフォルト色適用
         allMembers.forEach(m => {
             if(!m.color || m.color === "") m.color = "#4b89dc"; // 青色
             memberMap[m.name] = m;
@@ -33,11 +32,9 @@ window.onload = () => {
         processDataRange();
         initApp();
         
-        // 初回表示
         renderRecordPage(); 
         bindEvents();
         
-        // ロード完了
         document.getElementById('loadingMask').style.opacity = '0';
         setTimeout(() => { document.getElementById('loadingMask').style.display = 'none'; }, 500);
 
@@ -61,15 +58,17 @@ function processDataRange() {
             const t = d.getTime();
             if(t > maxTs) { 
                 maxTs = t; 
-                latestValidDateStr = l.date; // ★ここで確実に代入
+                latestValidDateStr = l.date; 
             }
         } 
     });
     
-    // もしデータが空なら今日を入れる（エラー回避）
     if(!latestValidDateStr) {
         const now = new Date();
-        latestValidDateStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        latestValidDateStr = `${y}/${m}/${d}`;
         if(!minDateObj) minDateObj = now;
         if(!maxDateObj) maxDateObj = now;
     }
@@ -103,6 +102,29 @@ function bindEvents() {
         const dateStr = target.dataset.date;
         if (dateStr) selectPeriod('day', dateStr);
     });
+
+    // ★追加: ハンバーガーメニューの開閉イベント
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    if (hamburgerBtn) {
+        hamburgerBtn.onclick = () => {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('open');
+            document.body.classList.add('no-scroll');
+        };
+    }
+
+    const closeSidebar = () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+        document.body.classList.remove('no-scroll');
+    };
+
+    if (closeSidebarBtn) closeSidebarBtn.onclick = closeSidebar;
+    if (sidebarOverlay) sidebarOverlay.onclick = closeSidebar;
 }
 
 function shiftPeriod(offset) {
@@ -118,25 +140,42 @@ function shiftPeriod(offset) {
         const nextMonthStart = new Date(y, m - 1, 1);
         const nextMonthEnd = new Date(y, m, 0);
         if (nextMonthEnd < minDateObj || nextMonthStart > maxDateObj) return;
-        selectPeriod('month', `${y}/${m}`);
+        
+        const mStr = String(m).padStart(2, '0');
+        selectPeriod('month', `${y}/${mStr}`);
+
     } else if (targetType === 'day') {
         const d = new Date(targetValue);
         d.setDate(d.getDate() + offset);
         if (d < minDateObj || d > maxDateObj) return;
+        
         const y = d.getFullYear();
-        const m = d.getMonth() + 1;
-        const day = d.getDate();
-        selectPeriod('day', `${y}/${m}/${day}`);
-    } else if (targetType === 'year') {
-         let y = parseInt(targetValue);
-         y += offset;
-         if (y < minDateObj.getFullYear() || y > maxDateObj.getFullYear()) return;
-         selectPeriod('year', y.toString());
+        const mStr = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        selectPeriod('day', `${y}/${mStr}/${dayStr}`);
+
+    } else if (targetType === 'year' || targetType === 'h1' || targetType === 'h2') {
+         let y = parseInt(targetValue) + offset;
+         let pStart, pEnd;
+         
+         if (targetType === 'h1') { 
+             pStart = new Date(y, 0, 1); 
+             pEnd = new Date(y, 5, 30);
+         } else if (targetType === 'h2') { 
+             pStart = new Date(y, 6, 1);
+             pEnd = new Date(y, 11, 31);
+         } else { 
+             pStart = new Date(y, 0, 1); 
+             pEnd = new Date(y, 11, 31); 
+         }
+
+         if (pEnd < minDateObj || pStart > maxDateObj) return;
+         selectPeriod(targetType, y.toString());
     }
 }
 
 function switchModalMember(offset) {
-    const targetList = currentAppMode === 'analytics' ? rankingList : catalogList;
+    const targetList = currentAppMode === 'analytics' || currentAppMode === 'records' ? rankingList : catalogList;
     if (!targetList || targetList.length === 0) return;
     let currentIndex = targetList.indexOf(currentModalMember);
     if (currentIndex === -1) return;
@@ -209,13 +248,14 @@ function initApp() {
         addItem('year', '年間', c.tY); if(c.tH1>0) addItem('h1', '上半期', c.tH1); if(c.tH2>0) addItem('h2', '下半期', c.tH2);
     });
 
-    // プルダウン生成
     const genSel = document.getElementById('genSelector');
-    genSel.innerHTML = "";
-    genSel.appendChild(new Option("全メンバー", "all"));
+    const genSel2 = document.getElementById('genSelector2');
+    let genHtml = '<option value="all">全メンバー</option>';
     ['1','2','3','4','5'].forEach(g => {
-        genSel.appendChild(new Option(genKanji[g], g));
+        genHtml += `<option value="${g}">${genKanji[g]}</option>`;
     });
+    genSel.innerHTML = genHtml;
+    genSel2.innerHTML = genHtml;
 
     if (latestValidDateStr) {
         selectPeriod('day', latestValidDateStr);
@@ -233,6 +273,16 @@ function selectPeriod(type, value) {
         calYear = p[0]; 
         calMonth = p[1] - 1; 
     }
+
+    // ★追加: スマホのサイドバーが開いていたら自動で閉じる
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    if (sidebar && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+        document.body.classList.remove('no-scroll');
+    }
+
     setAppMode('analytics');
     requestAnimationFrame(() => {
         updateDashboard();
@@ -294,10 +344,16 @@ function updatePeriodNavButtons() {
         const nextD = new Date(d); nextD.setDate(d.getDate() + 1);
         if (prevD < minDateObj) btnPrev.disabled = true;
         if (nextD > maxDateObj) btnNext.disabled = true;
-    } else if (currentFilter.type === 'year') {
+    } else if (currentFilter.type === 'year' || currentFilter.type === 'h1' || currentFilter.type === 'h2') {
          const y = parseInt(currentFilter.value);
-         if (y - 1 < minDateObj.getFullYear()) btnPrev.disabled = true;
-         if (y + 1 > maxDateObj.getFullYear()) btnNext.disabled = true;
+         
+         let prevY = y - 1;
+         let prevEnd = (currentFilter.type === 'h1') ? new Date(prevY, 5, 30) : new Date(prevY, 11, 31);
+         if (prevEnd < minDateObj) btnPrev.disabled = true;
+
+         let nextY = y + 1;
+         let nextStart = (currentFilter.type === 'h2') ? new Date(nextY, 6, 1) : new Date(nextY, 0, 1);
+         if (nextStart > maxDateObj) btnNext.disabled = true;
     }
 }
 
@@ -335,8 +391,17 @@ function updateDashboard() {
         topMemEl.classList.remove('multi');
     }
 
-    document.getElementById('pageTitle').innerText = (currentFilter.type === 'all' ? "全期間" : currentFilter.value);
-    document.getElementById('pageBadge').innerText = (currentFilter.type === 'day' ? "Daily" : currentFilter.type === 'month' ? "Monthly" : "Long Term");
+    let titleText = currentFilter.value;
+    if (currentFilter.type === 'all') {
+        titleText = "全期間";
+    } else if (currentFilter.type === 'year') {
+        titleText = currentFilter.value + "年 年間";
+    } else if (currentFilter.type === 'h1') {
+        titleText = currentFilter.value + "年 上半期";
+    } else if (currentFilter.type === 'h2') {
+        titleText = currentFilter.value + "年 下半期";
+    }
+    document.getElementById('pageTitle').innerText = titleText;
     
     document.getElementById('valStat1').innerText = total.toLocaleString();
     document.getElementById('valStat3').innerText = daysSet.size + "日";
@@ -345,7 +410,8 @@ function updateDashboard() {
     topMemEl.innerText = topMemStr;
     topMemEl.setAttribute('title', topMemStr); 
 
-    document.getElementById('subStat2').innerText = maxCount.toLocaleString() + "件";
+    const subStatEl = document.getElementById('subStat2');
+    if(subStatEl) subStatEl.innerText = maxCount.toLocaleString() + "件";
 
     updatePeriodNavButtons();
     renderCalendarWidget(); renderRankingView();
@@ -361,9 +427,7 @@ function isActiveMemberInPeriod(member) {
     } else if (currentFilter.type === 'month') {
         const [y, m] = currentFilter.value.split('/').map(Number);
         periodStart = new Date(y, m - 1, 1);
-    } else if (currentFilter.type === 'year') {
-        periodStart = new Date(currentFilter.value, 0, 1);
-    } else if (currentFilter.type === 'h1') {
+    } else if (currentFilter.type === 'year' || currentFilter.type === 'h1') {
         periodStart = new Date(currentFilter.value, 0, 1);
     } else if (currentFilter.type === 'h2') {
         periodStart = new Date(currentFilter.value, 6, 1);
@@ -392,8 +456,12 @@ function renderCalendarWidget() {
     });
     for(let d in daily) maxInMonth = Math.max(maxInMonth, daily[d]);
     for(let i=0; i<startDay; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
+    
     for(let d=1; d<=daysCount; d++) {
-        const dateStr = `${calYear}/${calMonth+1}/${d}`;
+        const mStr = String(calMonth + 1).padStart(2, '0');
+        const dStr = String(d).padStart(2, '0');
+        const dateStr = `${calYear}/${mStr}/${dStr}`;
+        
         const targetDate = new Date(calYear, calMonth, d);
         const c = daily[d] || 0; 
         let lvl = ""; 
@@ -402,6 +470,7 @@ function renderCalendarWidget() {
         const el = document.createElement('div'); el.className = `cal-day ${lvl}`;
         el.innerText = d; 
         el.dataset.date = dateStr;
+        
         if(currentFilter.type === 'day') {
             const curP = currentFilter.value.split('/').map(Number);
             if(curP[0]===calYear && curP[1]===(calMonth+1) && curP[2]===d) el.classList.add('active');
@@ -426,11 +495,9 @@ function renderRankingView() {
             totals[l.name] = (totals[l.name]||0) + c;
         }
     });
-    
     const activeGens = new Set();
     allMembers.forEach(m => { if ((totals[m.name] || 0) > 0) activeGens.add(m.gen); });
     
-    // ★修正：プルダウン再生成ロジックの改善
     const savedVal = genSel.value || "all";
     genSel.innerHTML = "";
     genSel.appendChild(new Option("全メンバー", "all"));
@@ -491,14 +558,17 @@ function renderMemberCatalog() {
         section.appendChild(header);
         const grid = document.createElement('div');
         grid.className = "grid-container";
+        
         grid.innerHTML = targets.map(m => {
-            const tagLink = m.tag ? `<a href="https://x.com/search?q=${encodeURIComponent(m.tag)}" target="_blank" class="x-link" onclick="event.stopPropagation()">𝕏</a>` : '';
+            const tagLink = m.tag ? `<a href="https://x.com/search?q=${encodeURIComponent(m.tag)}" target="_blank" class="x-link" onclick="event.stopPropagation()">${m.tag}</a>` : '';
             return `
             <div class="m-card" style="--c:${m.color||'#ccc'}" onclick="openModal('${m.name}', 'all:all')">
                 <div class="m-icon">${m.name.charAt(0)}</div>
-                <div class="m-name"><span>${m.name}</span>${tagLink}</div>
+                <div class="m-name"><span>${m.name}</span></div>
+                ${tagLink}
             </div>`;
         }).join('');
+        
         section.appendChild(grid);
         container.appendChild(section);
     });
@@ -513,7 +583,6 @@ function renderRecordPage() {
     let dataList = [];
     let maxVal = 0;
 
-    // ★統計計算ロジック (確実に動くverboseな書き方)
     const statsMap = {}; 
     const oneDay = 24 * 60 * 60 * 1000;
     
@@ -533,7 +602,7 @@ function renderRecordPage() {
             color: m.color || '#ccc',
             total: 0, activeDays: 0, streakMax: 0, currentStreak: 0, 
             highVolumeDays: 0, perfectMonthCount: 0, top3Count: 0,
-            streakStart: null, streakEnd: null, // ★追加：期間記録用
+            streakStart: null, streakEnd: null,
             maxStreakStart: null, maxStreakEnd: null,
             startDate: startDate, endDate: endDate,
             hasJoinDate: !!m.joinDate, isGraduated: !!m.gradDate,
@@ -546,14 +615,11 @@ function renderRecordPage() {
         if (statsMap[l.name]) {
             const s = statsMap[l.name];
             const count = parseInt(l.count) || 0;
-            // 日付を標準化してキーにする
-            const d = new Date(l.date);
-            const stdDateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
-            
-            s.logs[stdDateStr] = count;
+            s.logs[l.date] = count;
             s.total += count;
             if (count > 0) {
                 s.activeDays++;
+                const d = new Date(l.date);
                 if (!s.firstLogDate || d < s.firstLogDate) s.firstLogDate = d;
                 if (count >= 10) s.highVolumeDays++;
             }
@@ -564,7 +630,10 @@ function renderRecordPage() {
     const dateStrList = [];
     let dLoop = new Date(minDateObj);
     while (dLoop <= maxDateObj) {
-        dateStrList.push(`${dLoop.getFullYear()}/${dLoop.getMonth()+1}/${dLoop.getDate()}`);
+        const y = dLoop.getFullYear();
+        const m = String(dLoop.getMonth() + 1).padStart(2, '0');
+        const d = String(dLoop.getDate()).padStart(2, '0');
+        dateStrList.push(`${y}/${m}/${d}`);
         dLoop.setDate(dLoop.getDate() + 1);
     }
 
@@ -603,11 +672,13 @@ function renderRecordPage() {
 
         allMembers.forEach(m => {
             const s = statsMap[m.name];
-            if (s.startDate > monthStart || s.endDate < monthEnd) return; // 途中加入/卒業月は除外
+            if (s.startDate > monthStart || s.endDate < monthEnd) return; 
 
             let isPerfect = true;
             for (let d = 1; d <= daysInMonth; d++) {
-                const checkDate = `${currY}/${currM+1}/${d}`;
+                const mStr = String(currM + 1).padStart(2, '0');
+                const dStr = String(d).padStart(2, '0');
+                const checkDate = `${currY}/${mStr}/${dStr}`;
                 if (!s.logs[checkDate] || s.logs[checkDate] === 0) { isPerfect = false; break; }
             }
             if (isPerfect) s.perfectMonthCount++;
@@ -638,7 +709,7 @@ function renderRecordPage() {
             const count = s.logs[dateStr] || 0;
             
             if (count > 0) {
-                if (tempStreak === 0) streakStart = dateStr; // ストリーク開始
+                if (tempStreak === 0) streakStart = dateStr; 
                 tempStreak++;
                 if (tempStreak > s.streakMax) {
                     s.streakMax = tempStreak;
@@ -652,7 +723,6 @@ function renderRecordPage() {
         });
     });
 
-    // === ランキング表示 ===
     let unit = "";
     let isDecimal = false;
 
@@ -668,12 +738,11 @@ function renderRecordPage() {
         dataList = Object.keys(dailyWins).map(n => ({ name: n, count: dailyWins[n], color: memberMap[n]?.color||'#ccc' })).sort((a,b)=>b.count-a.count);
         if(dataList.length) maxVal = dataList[0].count;
         unit = "回";
-        // 描画へ (共通化せず愚直に書く)
         let rank = 1;
         dataList.forEach((r, i) => {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
-            const w = (r.count/maxVal)*100; // ★w定義
+            const w = (r.count/maxVal)*100;
             html += `<tr onclick="openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
         });
 
@@ -705,12 +774,48 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            // ★修正: クリックで月間ランキングへ
             html += `<tr onclick="openMonthlyRankingModal('${r.date}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${r.name}</div><div style="font-size:10px;color:#888">${r.date.replace('/','年')}月</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
         });
 
+    } else if (type === 'monthly_wins') {
+        const monthlyWins = {}; 
+        const monthlyTotals = {};
+        
+        allLogs.forEach(l => {
+            const ym = l.date.split('/').slice(0,2).join('/');
+            if (!monthlyTotals[ym]) monthlyTotals[ym] = {};
+            monthlyTotals[ym][l.name] = (monthlyTotals[ym][l.name] || 0) + (parseInt(l.count) || 0);
+        });
+        
+        Object.keys(monthlyTotals).forEach(ym => {
+            let maxInMonth = 0;
+            const recs = [];
+            for (let n in monthlyTotals[ym]) {
+                const c = monthlyTotals[ym][n];
+                if (c > maxInMonth) maxInMonth = c;
+                recs.push({ name: n, count: c });
+            }
+            if (maxInMonth > 0) {
+                recs.forEach(r => {
+                    if (r.count === maxInMonth) {
+                        monthlyWins[r.name] = (monthlyWins[r.name] || 0) + 1;
+                    }
+                });
+            }
+        });
+        
+        dataList = Object.keys(monthlyWins).map(n => ({ name: n, count: monthlyWins[n], color: memberMap[n]?.color || '#ccc' })).sort((a, b) => b.count - a.count);
+        if (dataList.length) maxVal = dataList[0].count;
+        unit = "回";
+        let rank = 1;
+        dataList.forEach((r, i) => {
+            if(i>0 && r.count<dataList[i-1].count) rank=i+1;
+            const rc = rank<=3 ? `rank-${rank}` : '';
+            const w = (r.count/maxVal)*100;
+            html += `<tr onclick="openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
+        });
+
     } else {
-        // 統計マップを使う系
         if (type === 'total') {
             dataList = Object.values(statsMap).sort((a,b) => b.total - a.total);
             maxVal = dataList[0].total; unit="";
@@ -722,7 +827,7 @@ function renderRecordPage() {
             maxVal = dataList[0].avg; unit=""; isDecimal=true;
         } else if (type === 'active_rate') {
             dataList = Object.values(statsMap).map(s => { s.rate = s.duration>0?(s.activeDays/s.duration)*100:0; return s; }).sort((a,b) => b.rate - a.rate);
-            maxVal = 100; unit="%"; isDecimal=true; // rateは最大100固定でもOKだが、ここでは相対でなく100%基準
+            maxVal = 100; unit="%"; isDecimal=true; 
         } else if (type === 'high_volume') {
             dataList = Object.values(statsMap).sort((a,b) => b.highVolumeDays - a.highVolumeDays);
             maxVal = dataList[0].highVolumeDays; unit="回";
@@ -734,7 +839,6 @@ function renderRecordPage() {
             maxVal = dataList[0].top3Count; unit="回";
         }
 
-        // 描画
         let rank = 1;
         dataList.forEach((r, i) => {
             let val = 0;
@@ -747,7 +851,7 @@ function renderRecordPage() {
             if(type==='top3') val=r.top3Count;
 
             if (i > 0) {
-                let prevVal = 0; // 前の人の値取得（簡易）
+                let prevVal = 0; 
                 if(type==='total') prevVal=dataList[i-1].total;
                 if(type==='streak') prevVal=dataList[i-1].streakMax;
                 if(type==='average') prevVal=dataList[i-1].avg;
@@ -760,10 +864,9 @@ function renderRecordPage() {
             }
 
             const rc = rank <= 3 ? `rank-${rank}` : '';
-            const w = (maxVal > 0) ? (val / maxVal) * 100 : 0; // ★w定義
+            const w = (maxVal > 0) ? (val / maxVal) * 100 : 0; 
             const valStr = isDecimal ? val.toFixed(type==='average'?2:1) : val.toLocaleString();
             
-            // ★追加: ストリークの期間表示
             let subHtml = "";
             if(type === 'streak' && r.maxStreakStart && r.maxStreakEnd) {
                 const isUpdating = (r.maxStreakEnd === latestValidDateStr && !r.isGraduated);
@@ -783,12 +886,10 @@ function renderRecordPage() {
     area.innerHTML = html;
 }
 
-// ★追加: 月間ランキングモーダル
 function openMonthlyRankingModal(ym) {
     document.body.classList.add('no-scroll');
     const [year, month] = ym.split('/');
     
-    // その月の集計
     const memberTotals = {};
     allLogs.forEach(l => {
         const p = l.date.split('/');
@@ -798,7 +899,6 @@ function openMonthlyRankingModal(ym) {
         }
     });
 
-    // 配列化 & ソート
     const ranking = Object.keys(memberTotals).map(name => ({
         name: name,
         count: memberTotals[name],
@@ -909,10 +1009,6 @@ function updateModalContent() {
         });
 
         for (let d = 1; d <= daysInMonth; d++) {
-            const dateObj = new Date(year, month - 1, d);
-            // if (dateObj < minDateObj) continue; 
-            // if (dateObj > maxDateObj) break; 
-
             const count = logMap[d] || 0;
             sum += count;
             if(count > max) max = count;
@@ -920,7 +1016,10 @@ function updateModalContent() {
             labels.push(d + '日');
             bars.push(count);
             lines.push(sum);
-            rawTargets.push(`${year}/${month}/${d}`);
+            
+            const fM = String(month).padStart(2, '0');
+            const fD = String(d).padStart(2, '0');
+            rawTargets.push(`${year}/${fM}/${fD}`);
         }
     } else {
         const mSum = new Map(); allLogs.forEach(l => { 
