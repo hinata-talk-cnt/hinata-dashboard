@@ -1,4 +1,5 @@
-const DATA_VER = new Date().getTime(); // キャッシュ回避
+// パフォーマンス改善: 日時ベースのキャッシュ無効化をやめ、固定バージョンで管理
+const DATA_VER = "20240301_01"; 
 
 let allLogs = []; 
 let allMembers = []; 
@@ -14,7 +15,24 @@ let catalogList = [];
 let minDateObj = null, maxDateObj = null;
 let latestValidDateStr = "";
 
+// 記録計算用のキャッシュ（保守性・パフォーマンス改善）
+let cachedStatsMap = null;
+let cachedDateStrList = null;
+
 const genKanji = { '1': '一期生', '2': '二期生', '3': '三期生', '4': '四期生', '5': '五期生' };
+
+// セキュリティ改善: XSS対策のためのHTMLエスケープ関数
+const escapeHTML = (str) => {
+    return String(str).replace(/[&<>"']/g, match => {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[match];
+    });
+};
 
 window.onload = () => {
     Promise.all([
@@ -215,7 +233,7 @@ function initApp() {
             if(p[0] === y && p[1] === m) count += c; 
         });
         const li = document.createElement('li'); li.className = 'archive-item';
-        li.innerHTML = `<span>${ym.replace('/','年')}月</span><span class="archive-count">${count.toLocaleString()}件</span>`;
+        li.innerHTML = `<span>${escapeHTML(ym.replace('/','年'))}月</span><span class="archive-count">${count.toLocaleString()}件</span>`;
         li.onclick = () => selectPeriod('month', ym);
         archiveList.appendChild(li);
     });
@@ -241,7 +259,7 @@ function initApp() {
         const c = getCounts(y);
         const addItem = (type, label, count) => {
             const li = document.createElement('li'); li.className = 'archive-item';
-            li.innerHTML = `<span>${y}年 ${label}</span><span class="archive-count">${count.toLocaleString()}件</span>`;
+            li.innerHTML = `<span>${escapeHTML(y)}年 ${escapeHTML(label)}</span><span class="archive-count">${count.toLocaleString()}件</span>`;
             li.onclick = () => selectPeriod(type, y.toString()); periodList.appendChild(li);
         };
         addItem('year', '年間', c.tY); if(c.tH1>0) addItem('h1', '上半期', c.tH1); if(c.tH2>0) addItem('h2', '下半期', c.tH2);
@@ -251,7 +269,7 @@ function initApp() {
     const genSel2 = document.getElementById('genSelector2');
     let genHtml = '<option value="all">全メンバー</option>';
     ['1','2','3','4','5'].forEach(g => {
-        genHtml += `<option value="${g}">${genKanji[g]}</option>`;
+        genHtml += `<option value="${g}">${escapeHTML(genKanji[g])}</option>`;
     });
     genSel.innerHTML = genHtml;
     genSel2.innerHTML = genHtml;
@@ -536,9 +554,9 @@ function renderRankingView() {
             if (i > 0 && r.count < ranking[i - 1].count) currentRank = i + 1;
             const rc = currentRank <= 3 ? `rank-${currentRank}` : '';
             const w = (max > 0) ? (r.count / max) * 100 : 0;
-            html += `<tr onclick="openModal('${r.name}')">
+            html += `<tr onclick="openModal('${escapeHTML(r.name)}')">
                 <td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${currentRank}</span></td>
-                <td style="width:140px; font-weight:bold;">${r.name}</td>
+                <td style="width:140px; font-weight:bold;">${escapeHTML(r.name)}</td>
                 <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count.toLocaleString()}</div></div></td>
             </tr>`; 
         });
@@ -569,11 +587,11 @@ function renderMemberCatalog() {
         grid.className = "grid-container";
         
         grid.innerHTML = targets.map(m => {
-            const tagLink = m.tag ? `<a href="https://x.com/search?q=${encodeURIComponent(m.tag)}" target="_blank" class="x-link" onclick="event.stopPropagation()">${m.tag}</a>` : '';
+            const tagLink = m.tag ? `<a href="https://x.com/search?q=${encodeURIComponent(m.tag)}" target="_blank" class="x-link" onclick="event.stopPropagation()">${escapeHTML(m.tag)}</a>` : '';
             return `
-            <div class="m-card" style="--c:${m.color||'#ccc'}" onclick="openModal('${m.name}', 'all:all')">
-                <div class="m-icon">${m.name.charAt(0)}</div>
-                <div class="m-name"><span>${m.name}</span></div>
+            <div class="m-card" style="--c:${m.color||'#ccc'}" onclick="openModal('${escapeHTML(m.name)}', 'all:all')">
+                <div class="m-icon">${escapeHTML(m.name.charAt(0))}</div>
+                <div class="m-name"><span>${escapeHTML(m.name)}</span></div>
                 ${tagLink}
             </div>`;
         }).join('');
@@ -583,14 +601,9 @@ function renderMemberCatalog() {
     });
 }
 
-function renderRecordPage() {
-    const type = document.getElementById('recordTypeSelector').value;
-    const area = document.getElementById('recordContentArea');
-    area.innerHTML = ""; 
-
-    let html = '<table class="ranking-table"><tbody>';
-    let dataList = [];
-    let maxVal = 0;
+// 保守性・パフォーマンス改善: 計算ロジックを分離しキャッシュを利用
+function buildRecordStats() {
+    if (cachedStatsMap) return { statsMap: cachedStatsMap, dateStrList: cachedDateStrList };
 
     const statsMap = {}; 
     const oneDay = 24 * 60 * 60 * 1000;
@@ -732,6 +745,22 @@ function renderRecordPage() {
         });
     });
 
+    cachedStatsMap = statsMap;
+    cachedDateStrList = dateStrList;
+    return { statsMap, dateStrList };
+}
+
+// 保守性改善: 描画ロジックの整理
+function renderRecordPage() {
+    const type = document.getElementById('recordTypeSelector').value;
+    const area = document.getElementById('recordContentArea');
+    area.innerHTML = ""; 
+
+    let html = '<table class="ranking-table"><tbody>';
+    let dataList = [];
+    let maxVal = 0;
+
+    const { statsMap } = buildRecordStats();
     let unit = "";
     let isDecimal = false;
 
@@ -751,7 +780,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
+            html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${escapeHTML(r.name)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
         });
 
     } else if (type === 'daily_max') {
@@ -762,7 +791,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openDailyRankingModal('${r.date}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${r.name}</div><div style="font-size:10px;color:#888">${r.date}</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
+            html += `<tr onclick="openDailyRankingModal('${escapeHTML(r.date)}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${escapeHTML(r.name)}</div><div style="font-size:10px;color:#888">${escapeHTML(r.date)}</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
         });
 
     } else if (type === 'monthly_max') {
@@ -782,7 +811,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openMonthlyRankingModal('${r.date}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${r.name}</div><div style="font-size:10px;color:#888">${r.date.replace('/','年')}月</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
+            html += `<tr onclick="openMonthlyRankingModal('${escapeHTML(r.date)}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${escapeHTML(r.name)}</div><div style="font-size:10px;color:#888">${escapeHTML(r.date.replace('/','年'))}月</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
         });
 
     } else if (type === 'monthly_wins') {
@@ -820,7 +849,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
+            html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${escapeHTML(r.name)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
         });
 
     } else {
@@ -879,12 +908,12 @@ function renderRecordPage() {
             if(type === 'streak' && r.maxStreakStart && r.maxStreakEnd) {
                 const isUpdating = (r.maxStreakEnd === latestValidDateStr && !r.isGraduated);
                 const badge = isUpdating ? ' <span class="updating-badge">🔥更新中</span>' : '';
-                subHtml = `<div style="font-size:10px;color:#888;">${r.maxStreakStart} - ${r.maxStreakEnd}${badge}</div>`;
+                subHtml = `<div style="font-size:10px;color:#888;">${escapeHTML(r.maxStreakStart)} - ${escapeHTML(r.maxStreakEnd)}${badge}</div>`;
             }
 
-            html += `<tr onclick="openModal('${r.name}', 'all:all')">
+            html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'all:all')">
                 <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
-                <td style="width:140px;font-weight:bold">${r.name}${subHtml}</td>
+                <td style="width:140px;font-weight:bold">${escapeHTML(r.name)}${subHtml}</td>
                 <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt" style="width:60px">${valStr}${unit}</div></div></td>
             </tr>`;
         });
@@ -922,15 +951,15 @@ function openMonthlyRankingModal(ym) {
         const rc = rank <= 3 ? `rank-${rank}` : '';
         const w = (max > 0) ? (r.count / max) * 100 : 0;
         
-        html += `<tr onclick="openModal('${r.name}', 'month:${ym}')">
+        html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'month:${ym}')">
             <td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${rank}</span></td>
-            <td style="width:140px; font-weight:bold;">${r.name}</td>
+            <td style="width:140px; font-weight:bold;">${escapeHTML(r.name)}</td>
             <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td>
         </tr>`;
     });
     html += '</tbody></table>';
 
-    document.getElementById('dailyModalTitle').innerText = `${ym.replace('/','年')}月のランキング`;
+    document.getElementById('dailyModalTitle').innerText = `${escapeHTML(ym.replace('/','年'))}月のランキング`;
     document.getElementById('dailyRankingArea').innerHTML = html;
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('dailyModal').style.display = 'block';
@@ -951,10 +980,10 @@ function openDailyRankingModal(dateStr) {
         if (i > 0 && r.count < ranking[i - 1].count) rank = i + 1;
         const rc = rank <= 3 ? `rank-${rank}` : '';
         const w = (r.count / max) * 100;
-        html += `<tr onclick="openModal('${r.name}', 'month:${dateStr.split('/').slice(0,2).join('/')}')"><td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px; font-weight:bold;">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
+        html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'month:${dateStr.split('/').slice(0,2).join('/')}')"><td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px; font-weight:bold;">${escapeHTML(r.name)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
     });
     html += '</tbody></table>';
-    document.getElementById('dailyModalTitle').innerText = `${dateStr} のランキング`;
+    document.getElementById('dailyModalTitle').innerText = `${escapeHTML(dateStr)} のランキング`;
     document.getElementById('dailyRankingArea').innerHTML = html;
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('dailyModal').style.display = 'block';
@@ -1032,7 +1061,6 @@ function updateModalContent() {
             rawTargets.push(`${year}/${fM}/${fD}`);
         }
 
-        // ★ 月表示のときは「1日最高」にして、1日平均だけ表示（3カラム）
         document.getElementById('mMaxLabel').innerText = "1日最高";
         if(window.innerWidth > 768) statsRow.style.gridTemplateColumns = "repeat(3, 1fr)";
         document.getElementById('mAvgBox1').style.display = "none";
@@ -1050,13 +1078,11 @@ function updateModalContent() {
             const c=mSum.get(ym); sum+=c; if(c>max) max=c; labels.push(ym); bars.push(c); lines.push(sum); rawTargets.push(ym); 
         });
 
-        // ★ 全期間や年間のときは「月間最高」にして、月平均と1日平均を両方表示（4カラム）
         document.getElementById('mMaxLabel').innerText = "月間最高";
         if(window.innerWidth > 768) statsRow.style.gridTemplateColumns = "repeat(4, 1fr)";
         document.getElementById('mAvgBox1').style.display = "block";
         document.getElementById('mAvgBox2').style.display = "block";
 
-        // ★ 日平均を出すために、指定期間内の活動日数を計算
         let pStart = minDateObj;
         let pEnd = maxDateObj;
 

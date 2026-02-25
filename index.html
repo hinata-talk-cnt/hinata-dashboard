@@ -9,9 +9,9 @@
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
 <div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
 
 <div class="mobile-header">
-    <button id="hamburgerBtn" class="hamburger-btn">
+    <button id="hamburgerBtn" class="hamburger-btn" aria-label="メニューを開く">
         <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
     <div class="mobile-header-title">📊 日向坂46 Message</div>
@@ -31,16 +31,16 @@
 <div class="container">
     <div class="sidebar" id="sidebar">
         
-        <button id="closeSidebarBtn" class="close-sidebar-btn">×</button>
+        <button id="closeSidebarBtn" class="close-sidebar-btn" aria-label="サイドバーを閉じる">×</button>
 
         <div class="card">
             <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" style="font-size:12px; color:#888;"></span></div>
             <div class="calendar-widget">
                 <div class="cal-header">
-                    <button class="cal-nav" id="btnPrevMonth">◀</button>
+                    <button class="cal-nav" id="btnPrevMonth" aria-label="前の月へ">◀</button>
                     <span class="cal-title" id="calTitle">-</span>
-                    <button class="cal-nav" id="btnNextMonth">▶</button>
-                    <button class="cal-nav cal-latest" id="btnLatest">最新</button>
+                    <button class="cal-nav" id="btnNextMonth" aria-label="次の月へ">▶</button>
+                    <button class="cal-nav cal-latest" id="btnLatest" aria-label="最新の日付へ">最新</button>
                 </div>
                 <div class="cal-grid"><div class="cal-head">月</div><div class="cal-head">火</div><div class="cal-head">水</div><div class="cal-head">木</div><div class="cal-head">金</div><div class="cal-head">土</div><div class="cal-head">日</div></div>
                 <div id="miniCalendar" class="cal-grid"></div>
@@ -89,25 +89,25 @@
             <div id="viewAnalytics" class="app-view active">
                 <div class="controls-bar">
                     <div class="view-title">
-                        <button class="title-nav-btn" id="btnPrevPeriod">◀</button>
+                        <button class="title-nav-btn" id="btnPrevPeriod" aria-label="前の期間へ">◀</button>
                         <span id="pageTitle">読み込み中...</span>
-                        <button class="title-nav-btn" id="btnNextPeriod">▶</button>
+                        <button class="title-nav-btn" id="btnNextPeriod" aria-label="次の期間へ">▶</button>
                     </div>
-                    <select id="genSelector"></select>
+                    <select id="genSelector" aria-label="期生を選択"></select>
                 </div>
                 <div id="rankingArea"></div>
             </div>
             
             <div id="viewMembers" class="app-view">
                 <div class="controls-bar">
-                    <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;"></select>
+                    <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="期生を選択"></select>
                 </div>
                 <div id="memberGrid"></div>
             </div>
 
             <div id="viewRecords" class="app-view">
                 <div class="controls-bar">
-                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px;">
+                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="記録の種類を選択">
                         <optgroup label="▼ 日次記録 (Daily)">
                             <option value="daily_max">🔥 最多送信数</option>
                             <option value="wins">🥇 1位獲得回数</option>
@@ -138,16 +138,16 @@
 <div id="modal" class="modal">
     <div class="modal-head">
         <div class="modal-nav-row">
-            <button class="nav-arrow" id="btnModalPrev">◀</button>
+            <button class="nav-arrow" id="btnModalPrev" aria-label="前のメンバーへ">◀</button>
             <div class="modal-title-col">
                 <h2 id="modalName" style="margin:0;">-</h2>
                 <div id="modalSubtitle" style="font-size:11px; color:#888;"></div>
             </div>
-            <button class="nav-arrow" id="btnModalNext">▶</button>
+            <button class="nav-arrow" id="btnModalNext" aria-label="次のメンバーへ">▶</button>
         </div>
         <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end; margin-top:10px;">
-            <select id="modalPeriodSelector" style="min-width:200px;"></select>
-            <button class="close-btn" onclick="closeModal()">×</button>
+            <select id="modalPeriodSelector" style="min-width:200px;" aria-label="期間を選択"></select>
+            <button class="close-btn" onclick="closeModal()" aria-label="閉じる">×</button>
         </div>
     </div>
     <div class="stats-row" id="modalStatsRow" style="margin-bottom:0; grid-template-columns: repeat(4, 1fr);">
@@ -176,11 +176,11 @@
         <div class="modal-title-col">
             <h2 id="dailyModalTitle" style="margin:0; font-size:18px;"></h2>
         </div>
-        <button class="close-btn" onclick="closeModal()">×</button>
+        <button class="close-btn" onclick="closeModal()" aria-label="閉じる">×</button>
     </div>
     <div id="dailyRankingArea" class="daily-list-wrap"></div>
 </div>
 
-<script src="main.js?v=4"></script>
+<script src="main.js?v=5"></script>
 </body>
 </html>
