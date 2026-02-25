@@ -103,7 +103,6 @@ function bindEvents() {
         if (dateStr) selectPeriod('day', dateStr);
     });
 
-    // ★追加: ハンバーガーメニューの開閉イベント
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -274,7 +273,6 @@ function selectPeriod(type, value) {
         calMonth = p[1] - 1; 
     }
 
-    // ★追加: スマホのサイドバーが開いていたら自動で閉じる
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     if (sidebar && sidebar.classList.contains('open')) {
@@ -412,6 +410,17 @@ function updateDashboard() {
 
     const subStatEl = document.getElementById('subStat2');
     if(subStatEl) subStatEl.innerText = maxCount.toLocaleString() + "件";
+
+    const statsRowEl = document.getElementById('topStatsRow');
+    if (statsRowEl) {
+        if (currentFilter.type === 'day') {
+            statsRowEl.classList.add('daily-mode');
+            document.querySelector('.stat-box.blue .stat-sub').innerText = '1日合計';
+        } else {
+            statsRowEl.classList.remove('daily-mode');
+            document.querySelector('.stat-box.blue .stat-sub').innerText = '期間合計';
+        }
+    }
 
     updatePeriodNavButtons();
     renderCalendarWidget(); renderRankingView();
@@ -726,7 +735,6 @@ function renderRecordPage() {
     let unit = "";
     let isDecimal = false;
 
-    // イベント系 (キャッシュできないもの)
     if (type === 'wins') {
         const dailyWins = {}; const dates = new Set();
         allLogs.forEach(l => { if((parseInt(l.count)||0) > 0) dates.add(l.date); });
@@ -994,6 +1002,8 @@ function updateModalContent() {
     let labels = [], bars = [], lines = [], sum = 0, max = 0;
     let rawTargets = [];
 
+    const statsRow = document.getElementById('modalStatsRow');
+
     if(type === 'month') {
         const [yStr, mStr] = value.split('/');
         const year = parseInt(yStr);
@@ -1021,6 +1031,17 @@ function updateModalContent() {
             const fD = String(d).padStart(2, '0');
             rawTargets.push(`${year}/${fM}/${fD}`);
         }
+
+        // ★ 月表示のときは「1日最高」にして、1日平均だけ表示（3カラム）
+        document.getElementById('mMaxLabel').innerText = "1日最高";
+        if(window.innerWidth > 768) statsRow.style.gridTemplateColumns = "repeat(3, 1fr)";
+        document.getElementById('mAvgBox1').style.display = "none";
+        document.getElementById('mAvgBox2').style.display = "block";
+        
+        document.getElementById('mTotal').innerText = sum.toLocaleString();
+        document.getElementById('mMax').innerText = max.toLocaleString();
+        document.getElementById('mAvg2').innerText = bars.length ? (sum / bars.length).toFixed(1) : 0.0;
+
     } else {
         const mSum = new Map(); allLogs.forEach(l => { 
             if(l.name === name && isDateInPeriod(l.date, filter)) { const p = l.date.split('/').map(Number); const ym = p[0]+'/'+p[1]; mSum.set(ym, (mSum.get(ym)||0)+(parseInt(l.count)||0)); } 
@@ -1028,10 +1049,62 @@ function updateModalContent() {
         Array.from(mSum.keys()).sort((a,b)=>new Date(a+'/1')-new Date(b+'/1')).forEach(ym => { 
             const c=mSum.get(ym); sum+=c; if(c>max) max=c; labels.push(ym); bars.push(c); lines.push(sum); rawTargets.push(ym); 
         });
+
+        // ★ 全期間や年間のときは「月間最高」にして、月平均と1日平均を両方表示（4カラム）
+        document.getElementById('mMaxLabel').innerText = "月間最高";
+        if(window.innerWidth > 768) statsRow.style.gridTemplateColumns = "repeat(4, 1fr)";
+        document.getElementById('mAvgBox1').style.display = "block";
+        document.getElementById('mAvgBox2').style.display = "block";
+
+        // ★ 日平均を出すために、指定期間内の活動日数を計算
+        let pStart = minDateObj;
+        let pEnd = maxDateObj;
+
+        if (type === 'year') {
+            pStart = new Date(value, 0, 1);
+            pEnd = new Date(value, 11, 31);
+        } else if (type === 'h1') {
+            pStart = new Date(value, 0, 1);
+            pEnd = new Date(value, 5, 30);
+        } else if (type === 'h2') {
+            pStart = new Date(value, 6, 1);
+            pEnd = new Date(value, 11, 31);
+        }
+
+        let mStart = member.joinDate ? new Date(member.joinDate) : null;
+        if (!mStart) {
+            let firstDate = null;
+            allLogs.forEach(l => {
+                if (l.name === name && (parseInt(l.count)||0)>0) {
+                    let d = new Date(l.date);
+                    if (!firstDate || d < firstDate) firstDate = d;
+                }
+            });
+            mStart = firstDate || minDateObj;
+        }
+        if (mStart < minDateObj) mStart = minDateObj;
+        
+        let mEnd = member.gradDate ? new Date(member.gradDate) : maxDateObj;
+        if (mEnd > maxDateObj) mEnd = maxDateObj;
+
+        let actualStart = pStart > mStart ? pStart : mStart;
+        let actualEnd = pEnd < mEnd ? pEnd : mEnd;
+        
+        let activeDaysInPeriod = 0;
+        if (actualStart <= actualEnd) {
+            activeDaysInPeriod = Math.ceil((actualEnd - actualStart) / (24 * 60 * 60 * 1000)) + 1;
+        }
+        if (activeDaysInPeriod < 1) activeDaysInPeriod = 1;
+
+        const dailyAvg = (sum / activeDaysInPeriod).toFixed(1);
+        const monthlyAvg = bars.length ? (sum / bars.length).toFixed(1) : 0.0;
+
+        document.getElementById('mTotal').innerText = sum.toLocaleString(); 
+        document.getElementById('mMax').innerText = max.toLocaleString();
+        document.getElementById('mAvg1').innerText = monthlyAvg;
+        document.getElementById('mAvg2').innerText = dailyAvg;
     }
     
-    document.getElementById('mTotal').innerText = sum.toLocaleString(); document.getElementById('mMax').innerText = max.toLocaleString();
-    document.getElementById('mAvg').innerText = bars.length ? (sum / bars.length).toFixed(1) : 0.0;
     if(chartInstance) chartInstance.destroy();
     
     const accentColor = '#FF9F43'; 

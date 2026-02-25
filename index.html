@@ -11,7 +11,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -99,14 +99,15 @@
             </div>
             
             <div id="viewMembers" class="app-view">
-                <div class="controls-bar"><div class="view-title">👥 メンバー一覧</div><select id="genSelector2"><option value="all">全メンバー</option><option value="1">一期生</option><option value="2">二期生</option><option value="3">三期生</option><option value="4">四期生</option><option value="5">五期生</option></select></div>
+                <div class="controls-bar">
+                    <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;"></select>
+                </div>
                 <div id="memberGrid"></div>
             </div>
 
             <div id="viewRecords" class="app-view">
                 <div class="controls-bar">
-                    <div class="view-title">🏆 記録</div>
-                    <select id="recordTypeSelector">
+                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px;">
                         <optgroup label="▼ 日次記録 (Daily)">
                             <option value="daily_max">🔥 最多送信数</option>
                             <option value="wins">🥇 1位獲得回数</option>
@@ -149,10 +150,23 @@
             <button class="close-btn" onclick="closeModal()">×</button>
         </div>
     </div>
-    <div class="stats-row" style="margin-bottom:0; grid-template-columns: repeat(3, 1fr);">
-        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;"><span class="stat-label">期間合計</span><span class="stat-val" id="mTotal" style="font-size:20px;">-</span></div>
-        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;"><span class="stat-label">期間内最高</span><span class="stat-val" id="mMax" style="font-size:20px;">-</span></div>
-        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;"><span class="stat-label">平均</span><span class="stat-val" id="mAvg" style="font-size:20px;">-</span></div>
+    <div class="stats-row" id="modalStatsRow" style="margin-bottom:0; grid-template-columns: repeat(4, 1fr);">
+        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;">
+            <span class="stat-label">期間合計</span>
+            <span class="stat-val" id="mTotal" style="font-size:20px;">-</span>
+        </div>
+        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;">
+            <span class="stat-label" id="mMaxLabel">月間最高</span>
+            <span class="stat-val" id="mMax" style="font-size:20px;">-</span>
+        </div>
+        <div class="stat-box" id="mAvgBox1" style="padding:10px; box-shadow:none; background:#f9f9f9;">
+            <span class="stat-label">月平均</span>
+            <span class="stat-val" id="mAvg1" style="font-size:20px;">-</span>
+        </div>
+        <div class="stat-box" id="mAvgBox2" style="padding:10px; box-shadow:none; background:#f9f9f9;">
+            <span class="stat-label">1日平均</span>
+            <span class="stat-val" id="mAvg2" style="font-size:20px;">-</span>
+        </div>
     </div>
     <div class="chart-box"><canvas id="personalChart"></canvas></div>
 </div>
@@ -167,6 +181,6 @@
     <div id="dailyRankingArea" class="daily-list-wrap"></div>
 </div>
 
-<script src="main.js?v=2"></script>
+<script src="main.js?v=4"></script>
 </body>
 </html>

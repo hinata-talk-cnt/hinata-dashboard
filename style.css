@@ -211,6 +211,15 @@ body.no-scroll {
         gap: 10px;
     }
     
+    /* 日次モードの時は2カラムにして後半2つ(日数・平均)を隠す */
+    .stats-row.daily-mode {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .stats-row.daily-mode .stat-box.orange,
+    .stats-row.daily-mode .stat-box.green {
+        display: none !important;
+    }
+
     .stat-box {
         padding: 15px 5px;
     }
@@ -377,7 +386,7 @@ body.no-scroll {
     list-style: none;
     padding: 0;
     margin: 0;
-    /* ここに高さ制限やスクロール設定は一切入れない */
+    /* ★修正: 高さを制限する設定を完全に削除しました！ */
 }
 
 .archive-item {
@@ -444,6 +453,15 @@ body.no-scroll {
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
     margin-bottom: 20px;
+}
+
+/* 日次モードの時は2カラムにして後半2つ(日数・平均)を隠す */
+.stats-row.daily-mode {
+    grid-template-columns: repeat(2, 1fr);
+}
+.stats-row.daily-mode .stat-box.orange,
+.stats-row.daily-mode .stat-box.green {
+    display: none;
 }
 
 .stat-box {
