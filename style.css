@@ -1,8 +1,24 @@
 /* =========================================
-   基本設定 (レイアウト崩れ防止)
+   基本設定 (レイアウト崩れ防止 & スクロールバー美化)
    ========================================= */
 * {
     box-sizing: border-box;
+}
+
+/* ★追加: スタイリッシュなスクロールバー (Webkitブラウザ用) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #999;
 }
 
 :root {
@@ -53,15 +69,6 @@ body.no-scroll {
     top: 20px;
     height: calc(100vh - 40px);
     overflow-y: auto;
-}
-
-.sidebar::-webkit-scrollbar {
-    width: 6px;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-    background-color: #ccc;
-    border-radius: 3px;
 }
 
 /* --- メインコンテンツ --- */
@@ -146,13 +153,10 @@ body.no-scroll {
         top: 0;
         left: -320px;
         width: 280px;
-        
-        /* ★修正: メニューバーを考慮した高さ(dvh)に変更し、一番下に余裕(padding-bottom)を持たせる */
-        height: 100vh !important; /* 古いブラウザ用 */
-        height: 100dvh !important; /* 最新ブラウザ用 */
+        height: 100vh !important; 
+        height: 100dvh !important; 
         padding: 20px;
-        padding-bottom: 80px !important; /* 指で一番下までスクロールしやすくする余白 */
-        
+        padding-bottom: 80px !important; 
         background: var(--bg-color);
         z-index: 1000;
         transition: left 0.3s ease;
@@ -725,6 +729,7 @@ select {
 /* =========================================
    モーダル & ローディング
    ========================================= */
+/* ★修正: スピナー用のCSSを追加 */
 #loadingMask {
     position: fixed;
     top: 0;
@@ -734,11 +739,31 @@ select {
     background: #fff;
     z-index: 9999;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    transition: opacity 0.5s;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
     font-weight: bold;
     color: #666;
-    transition: opacity 0.5s;
+    letter-spacing: 1px;
 }
 
 .modal-overlay {

@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日向坂46 Message Dashboard</title>
+    <title>日向坂46メッセージ集計</title>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZYQHLZR55J"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-ZYQHLZR55J');
+    </script>
     
     <meta property="og:title" content="日向坂46 Message Dashboard">
     <meta property="og:type" content="website">
@@ -12,13 +22,19 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
-        var ver = new Date().getTime();
-        document.write('<link rel="stylesheet" href="style.css?v=' + ver + '">');
+        const ver = new Date().getTime();
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'style.css?v=' + ver;
+        document.head.appendChild(link);
     </script>
 </head>
 <body>
 
-<div id="loadingMask">Loading data...</div>
+<div id="loadingMask">
+    <div class="spinner"></div>
+    <div class="loading-text">データを読み込んでいます...</div>
+</div>
 
 <div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
 
@@ -26,7 +42,7 @@
     <button id="hamburgerBtn" class="hamburger-btn">
         <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
-    <div class="mobile-header-title">📊 日向坂46 Message</div>
+    <div class="mobile-header-title">📊 日向坂46メッセージ</div>
 </div>
 
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -93,9 +109,9 @@
             <div id="viewAnalytics" class="app-view active">
                 <div class="controls-bar">
                     <div class="view-title">
-                        <button class="title-nav-btn" id="btnPrevPeriod">◀</button>
+                        <button class="title-nav-btn" id="btnPrevPeriod" aria-label="前の期間">◀</button>
                         <span id="pageTitle">読み込み中...</span>
-                        <button class="title-nav-btn" id="btnNextPeriod">▶</button>
+                        <button class="title-nav-btn" id="btnNextPeriod" aria-label="次の期間">▶</button>
                     </div>
                     <select id="genSelector"></select>
                 </div>
@@ -187,7 +203,9 @@
 </div>
 
 <script>
-    document.write('<script src="main.js?v=' + ver + '"><\/script>');
+    const script = document.createElement('script');
+    script.src = 'main.js?v=' + ver;
+    document.body.appendChild(script);
 </script>
 </body>
 </html>

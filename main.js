@@ -1,5 +1,8 @@
 const DATA_VER = new Date().getTime(); // キャッシュ回避
 
+// ==========================================
+// ★ グローバル変数
+// ==========================================
 let allLogs = []; 
 let allMembers = []; 
 let memberMap = {}; 
@@ -16,6 +19,20 @@ let latestValidDateStr = "";
 
 const genKanji = { '1': '一期生', '2': '二期生', '3': '三期生', '4': '四期生', '5': '五期生' };
 
+// ==========================================
+// ★ ヘルパー関数 (コード共通化)
+// ==========================================
+// Dateオブジェクトを "YYYY/MM/DD" に変換
+const formatDateStr = (dObj) => {
+    const y = dObj.getFullYear();
+    const m = String(dObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dObj.getDate()).padStart(2, '0');
+    return `${y}/${m}/${d}`;
+};
+
+// ==========================================
+// ★ メイン処理
+// ==========================================
 window.onload = () => {
     Promise.all([
         fetch('data.json?v=' + DATA_VER).then(res => res.json()), 
@@ -35,11 +52,13 @@ window.onload = () => {
         renderRecordPage(); 
         bindEvents();
         
-        document.getElementById('loadingMask').style.opacity = '0';
-        setTimeout(() => { document.getElementById('loadingMask').style.display = 'none'; }, 500);
+        // ローディング完了時のフェードアウト
+        const mask = document.getElementById('loadingMask');
+        mask.style.opacity = '0';
+        setTimeout(() => { mask.style.display = 'none'; }, 500);
 
     }).catch(e => {
-        alert("読み込みエラー:\n" + e);
+        alert("読み込みエラーが発生しました。時間を置いて再度お試しください。\n" + e);
         document.getElementById('loadingMask').style.display = 'none';
     });
 };
@@ -65,10 +84,7 @@ function processDataRange() {
     
     if(!latestValidDateStr) {
         const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
-        latestValidDateStr = `${y}/${m}/${d}`;
+        latestValidDateStr = formatDateStr(now);
         if(!minDateObj) minDateObj = now;
         if(!maxDateObj) maxDateObj = now;
     }
@@ -147,11 +163,7 @@ function shiftPeriod(offset) {
         const d = new Date(targetValue);
         d.setDate(d.getDate() + offset);
         if (d < minDateObj || d > maxDateObj) return;
-        
-        const y = d.getFullYear();
-        const mStr = String(d.getMonth() + 1).padStart(2, '0');
-        const dayStr = String(d.getDate()).padStart(2, '0');
-        selectPeriod('day', `${y}/${mStr}/${dayStr}`);
+        selectPeriod('day', formatDateStr(d));
 
     } else if (targetType === 'year' || targetType === 'h1' || targetType === 'h2') {
          let y = parseInt(targetValue) + offset;
@@ -467,11 +479,9 @@ function renderCalendarWidget() {
     for(let i=0; i<startDay; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
     
     for(let d=1; d<=daysCount; d++) {
-        const mStr = String(calMonth + 1).padStart(2, '0');
-        const dStr = String(d).padStart(2, '0');
-        const dateStr = `${calYear}/${mStr}/${dStr}`;
-        
         const targetDate = new Date(calYear, calMonth, d);
+        const dateStr = formatDateStr(targetDate);
+        
         const c = daily[d] || 0; 
         let lvl = ""; 
         if(c > 0) lvl = "lvl-1"; 
@@ -480,9 +490,8 @@ function renderCalendarWidget() {
         el.innerText = d; 
         el.dataset.date = dateStr;
         
-        if(currentFilter.type === 'day') {
-            const curP = currentFilter.value.split('/').map(Number);
-            if(curP[0]===calYear && curP[1]===(calMonth+1) && curP[2]===d) el.classList.add('active');
+        if(currentFilter.type === 'day' && currentFilter.value === dateStr) {
+            el.classList.add('active');
         }
         if (targetDate < minDateObj || targetDate > maxDateObj || c === 0) {
             el.classList.add('disabled');
@@ -650,10 +659,7 @@ function renderRecordPage() {
     const dateStrList = [];
     let dLoop = new Date(minDateObj);
     while (dLoop <= maxDateObj) {
-        const y = dLoop.getFullYear();
-        const m = String(dLoop.getMonth() + 1).padStart(2, '0');
-        const d = String(dLoop.getDate()).padStart(2, '0');
-        dateStrList.push(`${y}/${m}/${d}`);
+        dateStrList.push(formatDateStr(dLoop));
         dLoop.setDate(dLoop.getDate() + 1);
     }
 
@@ -695,9 +701,8 @@ function renderRecordPage() {
 
             let isPerfect = true;
             for (let d = 1; d <= daysInMonth; d++) {
-                const mStr = String(currM + 1).padStart(2, '0');
-                const dStr = String(d).padStart(2, '0');
-                const checkDate = `${currY}/${mStr}/${dStr}`;
+                const targetDate = new Date(currY, currM, d);
+                const checkDate = formatDateStr(targetDate);
                 if (!s.logs[checkDate] || s.logs[checkDate] === 0) { isPerfect = false; break; }
             }
             if (isPerfect) s.perfectMonthCount++;
@@ -713,7 +718,7 @@ function renderRecordPage() {
         if (!s.hasJoinDate && s.firstLogDate) realStart = s.firstLogDate;
         if (realStart < minDateObj) realStart = minDateObj;
 
-        // ★修正: 日次・月次それぞれの分母を計算
+        // 日次・月次それぞれの分母を計算
         let diffTime = s.endDate - realStart;
         if (diffTime < 0) diffTime = 0;
         const durationDays = Math.ceil(diffTime / oneDay) + 1;
@@ -846,10 +851,10 @@ function renderRecordPage() {
         } else if (type === 'streak') {
             dataList = Object.values(statsMap).filter(s => s.streakMax > 0).sort((a,b) => b.streakMax - a.streakMax);
             maxVal = dataList[0].streakMax; unit="日";
-        } else if (type === 'average_daily') { // ★変更
+        } else if (type === 'average_daily') {
             dataList = Object.values(statsMap).map(s => { s.avg = s.duration>0?s.total/s.duration:0; return s; }).sort((a,b) => b.avg - a.avg);
             maxVal = dataList.length > 0 ? dataList[0].avg : 0; unit=""; isDecimal=true;
-        } else if (type === 'average_monthly') { // ★追加
+        } else if (type === 'average_monthly') {
             dataList = Object.values(statsMap).map(s => { s.avg = s.durationMonths>0?s.total/s.durationMonths:0; return s; }).sort((a,b) => b.avg - a.avg);
             maxVal = dataList.length > 0 ? dataList[0].avg : 0; unit=""; isDecimal=true;
         } else if (type === 'active_rate') {
@@ -866,36 +871,30 @@ function renderRecordPage() {
             maxVal = dataList[0].top3Count; unit="回";
         }
 
+        const statKeyMap = {
+            'total': 'total',
+            'streak': 'streakMax',
+            'average_daily': 'avg',
+            'average_monthly': 'avg',
+            'active_rate': 'rate',
+            'high_volume': 'highVolumeDays',
+            'perfect_months': 'perfectMonthCount',
+            'top3': 'top3Count'
+        };
+
         let rank = 1;
         dataList.forEach((r, i) => {
-            let val = 0;
-            if(type==='total') val=r.total;
-            if(type==='streak') val=r.streakMax;
-            if(type==='average_daily') val=r.avg; // ★変更
-            if(type==='average_monthly') val=r.avg; // ★追加
-            if(type==='active_rate') val=r.rate;
-            if(type==='high_volume') val=r.highVolumeDays;
-            if(type==='perfect_months') val=r.perfectMonthCount;
-            if(type==='top3') val=r.top3Count;
+            const targetKey = statKeyMap[type];
+            let val = r[targetKey] || 0;
 
             if (i > 0) {
-                let prevVal = 0; 
-                if(type==='total') prevVal=dataList[i-1].total;
-                if(type==='streak') prevVal=dataList[i-1].streakMax;
-                if(type==='average_daily') prevVal=dataList[i-1].avg; // ★変更
-                if(type==='average_monthly') prevVal=dataList[i-1].avg; // ★追加
-                if(type==='active_rate') prevVal=dataList[i-1].rate;
-                if(type==='high_volume') prevVal=dataList[i-1].highVolumeDays;
-                if(type==='perfect_months') prevVal=dataList[i-1].perfectMonthCount;
-                if(type==='top3') prevVal=dataList[i-1].top3Count;
-                
+                let prevVal = dataList[i-1][targetKey] || 0; 
                 if (val < prevVal) rank = i + 1;
             }
 
             const rc = rank <= 3 ? `rank-${rank}` : '';
             const w = (maxVal > 0) ? (val / maxVal) * 100 : 0; 
             
-            // ★変更: 平均値は小数点以下第1位までに統一
             const valStr = isDecimal ? val.toFixed((type==='average_daily'||type==='average_monthly')?1:1) : val.toLocaleString();
             
             let subHtml = "";
@@ -1041,7 +1040,7 @@ function updateModalContent() {
             }
         });
 
-        // ★修正: 活動開始日と終了日を計算し、グラフのX軸（描画範囲）を限定する
+        // 活動開始日と終了日を計算し、グラフのX軸（描画範囲）を限定する
         let mStart = member.joinDate ? new Date(member.joinDate) : null;
         if (!mStart) {
             let firstDate = null;
@@ -1076,7 +1075,7 @@ function updateModalContent() {
         let actualStart = pStart > mStart ? pStart : mStart;
         let actualEnd = pEnd < mEnd ? pEnd : mEnd;
 
-        // グラフを描画する日の範囲（例: 潮紗理菜さんの1月なら 1日〜9日）
+        // グラフを描画する日の範囲
         let startDay = (actualStart.getFullYear() === year && actualStart.getMonth() + 1 === month) ? actualStart.getDate() : 1;
         let endDay = (actualEnd.getFullYear() === year && actualEnd.getMonth() + 1 === month) ? actualEnd.getDate() : daysInMonth;
         
@@ -1105,7 +1104,6 @@ function updateModalContent() {
         
         document.getElementById('mTotal').innerText = sum.toLocaleString();
         document.getElementById('mMax').innerText = max.toLocaleString();
-        // ★平均の分母も bars.length（描画した日数）になるため正確になる
         document.getElementById('mAvg2').innerText = bars.length ? (sum / bars.length).toFixed(1) : 0.0;
 
     } else {
