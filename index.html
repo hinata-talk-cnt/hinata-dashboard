@@ -2,17 +2,6 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZYQHLZR55J"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-ZYQHLZR55J');
-    </script>
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日向坂46 Message Dashboard</title>
     
@@ -20,9 +9,12 @@
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <link rel="stylesheet" href="style.css?v=5">
+    <script>
+        var ver = new Date().getTime();
+        document.write('<link rel="stylesheet" href="style.css?v=' + ver + '">');
+    </script>
 </head>
 <body>
 
@@ -31,7 +23,7 @@
 <div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
 
 <div class="mobile-header">
-    <button id="hamburgerBtn" class="hamburger-btn" aria-label="メニューを開く">
+    <button id="hamburgerBtn" class="hamburger-btn">
         <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
     <div class="mobile-header-title">📊 日向坂46 Message</div>
@@ -42,16 +34,16 @@
 <div class="container">
     <div class="sidebar" id="sidebar">
         
-        <button id="closeSidebarBtn" class="close-sidebar-btn" aria-label="サイドバーを閉じる">×</button>
+        <button id="closeSidebarBtn" class="close-sidebar-btn">×</button>
 
         <div class="card">
             <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" style="font-size:12px; color:#888;"></span></div>
             <div class="calendar-widget">
                 <div class="cal-header">
-                    <button class="cal-nav" id="btnPrevMonth" aria-label="前の月へ">◀</button>
+                    <button class="cal-nav" id="btnPrevMonth">◀</button>
                     <span class="cal-title" id="calTitle">-</span>
-                    <button class="cal-nav" id="btnNextMonth" aria-label="次の月へ">▶</button>
-                    <button class="cal-nav cal-latest" id="btnLatest" aria-label="最新の日付へ">最新</button>
+                    <button class="cal-nav" id="btnNextMonth">▶</button>
+                    <button class="cal-nav cal-latest" id="btnLatest">最新</button>
                 </div>
                 <div class="cal-grid"><div class="cal-head">月</div><div class="cal-head">火</div><div class="cal-head">水</div><div class="cal-head">木</div><div class="cal-head">金</div><div class="cal-head">土</div><div class="cal-head">日</div></div>
                 <div id="miniCalendar" class="cal-grid"></div>
@@ -67,7 +59,8 @@
                     <span style="color:#e91e63; font-weight:bold;">※ご注意</span><br>
                     当サイトの集計データは<br>
                     <b>2023年11月以降</b><br>
-                    の結果のみ反映されています。
+                    の結果のみ反映されています。<br>
+                    <span style="font-size:11px; color:#666; display:block; margin-top:6px; line-height:1.4;">(そのため、通算記録などは五期生のみ完全なデータとなっています)</span>
                 </p>
                 <p style="margin-bottom:15px; color:#888; font-size:11px;">
                     ※PC環境での閲覧を推奨します
@@ -100,40 +93,41 @@
             <div id="viewAnalytics" class="app-view active">
                 <div class="controls-bar">
                     <div class="view-title">
-                        <button class="title-nav-btn" id="btnPrevPeriod" aria-label="前の期間へ">◀</button>
+                        <button class="title-nav-btn" id="btnPrevPeriod">◀</button>
                         <span id="pageTitle">読み込み中...</span>
-                        <button class="title-nav-btn" id="btnNextPeriod" aria-label="次の期間へ">▶</button>
+                        <button class="title-nav-btn" id="btnNextPeriod">▶</button>
                     </div>
-                    <select id="genSelector" aria-label="期生を選択"></select>
+                    <select id="genSelector"></select>
                 </div>
                 <div id="rankingArea"></div>
             </div>
             
             <div id="viewMembers" class="app-view">
                 <div class="controls-bar">
-                    <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="期生を選択"></select>
+                    <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;"></select>
                 </div>
                 <div id="memberGrid"></div>
             </div>
 
             <div id="viewRecords" class="app-view">
                 <div class="controls-bar">
-                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="記録の種類を選択">
+                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px;">
                         <optgroup label="▼ 日次記録 (Daily)">
                             <option value="daily_max">🔥 最多送信数</option>
                             <option value="wins">🥇 1位獲得回数</option>
                             <option value="top3">🥉 Top3回数</option>
                             <option value="streak">🚀 連続送信日数</option>
                             <option value="high_volume">💌 2桁送信回数</option>
+                            <option value="average_daily">📊 1日平均送信数</option>
                         </optgroup>
                         <optgroup label="▼ 月間記録 (Monthly)">
                             <option value="monthly_max">👑 最多送信数</option>
                             <option value="monthly_wins">🥇 1位獲得回数</option>
                             <option value="perfect_months">📅 皆勤賞数</option>
+                            <option value="average_monthly">📊 月間平均送信数</option>
                         </optgroup>
                         <optgroup label="▼ 通算記録 (Total)">
                             <option value="total">🏆 最多送信数</option>
-                            <option value="average">📊 平均送信数</option>
                             <option value="active_rate">📈 アクティブ率</option>
                         </optgroup>
                     </select>
@@ -149,16 +143,16 @@
 <div id="modal" class="modal">
     <div class="modal-head">
         <div class="modal-nav-row">
-            <button class="nav-arrow" id="btnModalPrev" aria-label="前のメンバーへ">◀</button>
+            <button class="nav-arrow" id="btnModalPrev">◀</button>
             <div class="modal-title-col">
                 <h2 id="modalName" style="margin:0;">-</h2>
                 <div id="modalSubtitle" style="font-size:11px; color:#888;"></div>
             </div>
-            <button class="nav-arrow" id="btnModalNext" aria-label="次のメンバーへ">▶</button>
+            <button class="nav-arrow" id="btnModalNext">▶</button>
         </div>
         <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end; margin-top:10px;">
-            <select id="modalPeriodSelector" style="min-width:200px;" aria-label="期間を選択"></select>
-            <button class="close-btn" onclick="closeModal()" aria-label="閉じる">×</button>
+            <select id="modalPeriodSelector" style="min-width:200px;"></select>
+            <button class="close-btn" onclick="closeModal()">×</button>
         </div>
     </div>
     <div class="stats-row" id="modalStatsRow" style="margin-bottom:0; grid-template-columns: repeat(4, 1fr);">
@@ -187,11 +181,13 @@
         <div class="modal-title-col">
             <h2 id="dailyModalTitle" style="margin:0; font-size:18px;"></h2>
         </div>
-        <button class="close-btn" onclick="closeModal()" aria-label="閉じる">×</button>
+        <button class="close-btn" onclick="closeModal()">×</button>
     </div>
     <div id="dailyRankingArea" class="daily-list-wrap"></div>
 </div>
 
-<script src="main.js?v=5"></script>
+<script>
+    document.write('<script src="main.js?v=' + ver + '"><\/script>');
+</script>
 </body>
 </html>

@@ -1,5 +1,4 @@
-// パフォーマンス改善: 日時ベースのキャッシュ無効化をやめ、固定バージョンで管理
-const DATA_VER = "20240301_01"; 
+const DATA_VER = new Date().getTime(); // キャッシュ回避
 
 let allLogs = []; 
 let allMembers = []; 
@@ -15,24 +14,7 @@ let catalogList = [];
 let minDateObj = null, maxDateObj = null;
 let latestValidDateStr = "";
 
-// 記録計算用のキャッシュ（保守性・パフォーマンス改善）
-let cachedStatsMap = null;
-let cachedDateStrList = null;
-
 const genKanji = { '1': '一期生', '2': '二期生', '3': '三期生', '4': '四期生', '5': '五期生' };
-
-// セキュリティ改善: XSS対策のためのHTMLエスケープ関数
-const escapeHTML = (str) => {
-    return String(str).replace(/[&<>"']/g, match => {
-        return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-        }[match];
-    });
-};
 
 window.onload = () => {
     Promise.all([
@@ -233,7 +215,7 @@ function initApp() {
             if(p[0] === y && p[1] === m) count += c; 
         });
         const li = document.createElement('li'); li.className = 'archive-item';
-        li.innerHTML = `<span>${escapeHTML(ym.replace('/','年'))}月</span><span class="archive-count">${count.toLocaleString()}件</span>`;
+        li.innerHTML = `<span>${ym.replace('/','年')}月</span><span class="archive-count">${count.toLocaleString()}件</span>`;
         li.onclick = () => selectPeriod('month', ym);
         archiveList.appendChild(li);
     });
@@ -259,7 +241,7 @@ function initApp() {
         const c = getCounts(y);
         const addItem = (type, label, count) => {
             const li = document.createElement('li'); li.className = 'archive-item';
-            li.innerHTML = `<span>${escapeHTML(y)}年 ${escapeHTML(label)}</span><span class="archive-count">${count.toLocaleString()}件</span>`;
+            li.innerHTML = `<span>${y}年 ${label}</span><span class="archive-count">${count.toLocaleString()}件</span>`;
             li.onclick = () => selectPeriod(type, y.toString()); periodList.appendChild(li);
         };
         addItem('year', '年間', c.tY); if(c.tH1>0) addItem('h1', '上半期', c.tH1); if(c.tH2>0) addItem('h2', '下半期', c.tH2);
@@ -269,7 +251,7 @@ function initApp() {
     const genSel2 = document.getElementById('genSelector2');
     let genHtml = '<option value="all">全メンバー</option>';
     ['1','2','3','4','5'].forEach(g => {
-        genHtml += `<option value="${g}">${escapeHTML(genKanji[g])}</option>`;
+        genHtml += `<option value="${g}">${genKanji[g]}</option>`;
     });
     genSel.innerHTML = genHtml;
     genSel2.innerHTML = genHtml;
@@ -554,9 +536,9 @@ function renderRankingView() {
             if (i > 0 && r.count < ranking[i - 1].count) currentRank = i + 1;
             const rc = currentRank <= 3 ? `rank-${currentRank}` : '';
             const w = (max > 0) ? (r.count / max) * 100 : 0;
-            html += `<tr onclick="openModal('${escapeHTML(r.name)}')">
+            html += `<tr onclick="openModal('${r.name}')">
                 <td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${currentRank}</span></td>
-                <td style="width:140px; font-weight:bold;">${escapeHTML(r.name)}</td>
+                <td style="width:140px; font-weight:bold;">${r.name}</td>
                 <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count.toLocaleString()}</div></div></td>
             </tr>`; 
         });
@@ -587,11 +569,11 @@ function renderMemberCatalog() {
         grid.className = "grid-container";
         
         grid.innerHTML = targets.map(m => {
-            const tagLink = m.tag ? `<a href="https://x.com/search?q=${encodeURIComponent(m.tag)}" target="_blank" class="x-link" onclick="event.stopPropagation()">${escapeHTML(m.tag)}</a>` : '';
+            const tagLink = m.tag ? `<a href="https://x.com/search?q=${encodeURIComponent(m.tag)}" target="_blank" class="x-link" onclick="event.stopPropagation()">${m.tag}</a>` : '';
             return `
-            <div class="m-card" style="--c:${m.color||'#ccc'}" onclick="openModal('${escapeHTML(m.name)}', 'all:all')">
-                <div class="m-icon">${escapeHTML(m.name.charAt(0))}</div>
-                <div class="m-name"><span>${escapeHTML(m.name)}</span></div>
+            <div class="m-card" style="--c:${m.color||'#ccc'}" onclick="openModal('${m.name}', 'all:all')">
+                <div class="m-icon">${m.name.charAt(0)}</div>
+                <div class="m-name"><span>${m.name}</span></div>
                 ${tagLink}
             </div>`;
         }).join('');
@@ -601,9 +583,14 @@ function renderMemberCatalog() {
     });
 }
 
-// 保守性・パフォーマンス改善: 計算ロジックを分離しキャッシュを利用
-function buildRecordStats() {
-    if (cachedStatsMap) return { statsMap: cachedStatsMap, dateStrList: cachedDateStrList };
+function renderRecordPage() {
+    const type = document.getElementById('recordTypeSelector').value;
+    const area = document.getElementById('recordContentArea');
+    area.innerHTML = ""; 
+
+    let html = '<table class="ranking-table"><tbody>';
+    let dataList = [];
+    let maxVal = 0;
 
     const statsMap = {}; 
     const oneDay = 24 * 60 * 60 * 1000;
@@ -628,7 +615,9 @@ function buildRecordStats() {
             maxStreakStart: null, maxStreakEnd: null,
             startDate: startDate, endDate: endDate,
             hasJoinDate: !!m.joinDate, isGraduated: !!m.gradDate,
-            logs: {}, firstLogDate: null
+            logs: {}, 
+            firstLogDate: null,
+            lastLogDate: null
         };
     });
 
@@ -643,8 +632,17 @@ function buildRecordStats() {
                 s.activeDays++;
                 const d = new Date(l.date);
                 if (!s.firstLogDate || d < s.firstLogDate) s.firstLogDate = d;
+                if (!s.lastLogDate || d > s.lastLogDate) s.lastLogDate = d;
                 if (count >= 10) s.highVolumeDays++;
             }
+        }
+    });
+
+    // 卒業生の実質終了日を補正
+    allMembers.forEach(m => {
+        const s = statsMap[m.name];
+        if (s.isGraduated && s.lastLogDate && s.lastLogDate > s.endDate) {
+            s.endDate = s.lastLogDate; 
         }
     });
 
@@ -664,11 +662,10 @@ function buildRecordStats() {
         const dObj = new Date(dateStr);
         const dailyRank = [];
         allMembers.forEach(m => {
-            const gDate = m.gradDate ? new Date(m.gradDate) : null;
-            if (gDate) gDate.setHours(23,59,59);
-            if (gDate && dObj > gDate) return; 
+            const s = statsMap[m.name];
+            if (dObj > s.endDate) return; 
 
-            const count = statsMap[m.name].logs[dateStr] || 0;
+            const count = s.logs[dateStr] || 0;
             if (count > 0) dailyRank.push({ name: m.name, count: count });
         });
         dailyRank.sort((a,b) => b.count - a.count);
@@ -716,18 +713,24 @@ function buildRecordStats() {
         if (!s.hasJoinDate && s.firstLogDate) realStart = s.firstLogDate;
         if (realStart < minDateObj) realStart = minDateObj;
 
-        const diffTime = Math.abs(s.endDate - realStart);
+        // ★修正: 日次・月次それぞれの分母を計算
+        let diffTime = s.endDate - realStart;
+        if (diffTime < 0) diffTime = 0;
         const durationDays = Math.ceil(diffTime / oneDay) + 1;
         s.duration = durationDays > 0 ? durationDays : 1; 
 
+        const startY = realStart.getFullYear();
+        const startM = realStart.getMonth();
+        const eY = s.endDate.getFullYear();
+        const eM = s.endDate.getMonth();
+        const durationMonths = (eY - startY) * 12 + (eM - startM) + 1;
+        s.durationMonths = durationMonths > 0 ? durationMonths : 1;
+
         let tempStreak = 0;
         let streakStart = null;
-        
-        const gDate = m.gradDate ? new Date(m.gradDate) : null;
-        if (gDate) gDate.setHours(23,59,59);
 
         dateStrList.forEach(dateStr => {
-            if (gDate && new Date(dateStr) > gDate) return;
+            if (new Date(dateStr) > s.endDate) return;
             const count = s.logs[dateStr] || 0;
             
             if (count > 0) {
@@ -745,22 +748,6 @@ function buildRecordStats() {
         });
     });
 
-    cachedStatsMap = statsMap;
-    cachedDateStrList = dateStrList;
-    return { statsMap, dateStrList };
-}
-
-// 保守性改善: 描画ロジックの整理
-function renderRecordPage() {
-    const type = document.getElementById('recordTypeSelector').value;
-    const area = document.getElementById('recordContentArea');
-    area.innerHTML = ""; 
-
-    let html = '<table class="ranking-table"><tbody>';
-    let dataList = [];
-    let maxVal = 0;
-
-    const { statsMap } = buildRecordStats();
     let unit = "";
     let isDecimal = false;
 
@@ -780,7 +767,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${escapeHTML(r.name)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
+            html += `<tr onclick="openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
         });
 
     } else if (type === 'daily_max') {
@@ -791,7 +778,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openDailyRankingModal('${escapeHTML(r.date)}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${escapeHTML(r.name)}</div><div style="font-size:10px;color:#888">${escapeHTML(r.date)}</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
+            html += `<tr onclick="openDailyRankingModal('${r.date}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${r.name}</div><div style="font-size:10px;color:#888">${r.date}</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
         });
 
     } else if (type === 'monthly_max') {
@@ -811,7 +798,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openMonthlyRankingModal('${escapeHTML(r.date)}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${escapeHTML(r.name)}</div><div style="font-size:10px;color:#888">${escapeHTML(r.date.replace('/','年'))}月</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
+            html += `<tr onclick="openMonthlyRankingModal('${r.date}')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px"><div style="font-weight:bold">${r.name}</div><div style="font-size:10px;color:#888">${r.date.replace('/','年')}月</div></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
         });
 
     } else if (type === 'monthly_wins') {
@@ -849,7 +836,7 @@ function renderRecordPage() {
             if(i>0 && r.count<dataList[i-1].count) rank=i+1;
             const rc = rank<=3 ? `rank-${rank}` : '';
             const w = (r.count/maxVal)*100;
-            html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${escapeHTML(r.name)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
+            html += `<tr onclick="openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt">${r.count}${unit}</div></div></td></tr>`;
         });
 
     } else {
@@ -859,9 +846,12 @@ function renderRecordPage() {
         } else if (type === 'streak') {
             dataList = Object.values(statsMap).filter(s => s.streakMax > 0).sort((a,b) => b.streakMax - a.streakMax);
             maxVal = dataList[0].streakMax; unit="日";
-        } else if (type === 'average') {
+        } else if (type === 'average_daily') { // ★変更
             dataList = Object.values(statsMap).map(s => { s.avg = s.duration>0?s.total/s.duration:0; return s; }).sort((a,b) => b.avg - a.avg);
-            maxVal = dataList[0].avg; unit=""; isDecimal=true;
+            maxVal = dataList.length > 0 ? dataList[0].avg : 0; unit=""; isDecimal=true;
+        } else if (type === 'average_monthly') { // ★追加
+            dataList = Object.values(statsMap).map(s => { s.avg = s.durationMonths>0?s.total/s.durationMonths:0; return s; }).sort((a,b) => b.avg - a.avg);
+            maxVal = dataList.length > 0 ? dataList[0].avg : 0; unit=""; isDecimal=true;
         } else if (type === 'active_rate') {
             dataList = Object.values(statsMap).map(s => { s.rate = s.duration>0?(s.activeDays/s.duration)*100:0; return s; }).sort((a,b) => b.rate - a.rate);
             maxVal = 100; unit="%"; isDecimal=true; 
@@ -881,7 +871,8 @@ function renderRecordPage() {
             let val = 0;
             if(type==='total') val=r.total;
             if(type==='streak') val=r.streakMax;
-            if(type==='average') val=r.avg;
+            if(type==='average_daily') val=r.avg; // ★変更
+            if(type==='average_monthly') val=r.avg; // ★追加
             if(type==='active_rate') val=r.rate;
             if(type==='high_volume') val=r.highVolumeDays;
             if(type==='perfect_months') val=r.perfectMonthCount;
@@ -891,7 +882,8 @@ function renderRecordPage() {
                 let prevVal = 0; 
                 if(type==='total') prevVal=dataList[i-1].total;
                 if(type==='streak') prevVal=dataList[i-1].streakMax;
-                if(type==='average') prevVal=dataList[i-1].avg;
+                if(type==='average_daily') prevVal=dataList[i-1].avg; // ★変更
+                if(type==='average_monthly') prevVal=dataList[i-1].avg; // ★追加
                 if(type==='active_rate') prevVal=dataList[i-1].rate;
                 if(type==='high_volume') prevVal=dataList[i-1].highVolumeDays;
                 if(type==='perfect_months') prevVal=dataList[i-1].perfectMonthCount;
@@ -902,18 +894,20 @@ function renderRecordPage() {
 
             const rc = rank <= 3 ? `rank-${rank}` : '';
             const w = (maxVal > 0) ? (val / maxVal) * 100 : 0; 
-            const valStr = isDecimal ? val.toFixed(type==='average'?2:1) : val.toLocaleString();
+            
+            // ★変更: 平均値は小数点以下第1位までに統一
+            const valStr = isDecimal ? val.toFixed((type==='average_daily'||type==='average_monthly')?1:1) : val.toLocaleString();
             
             let subHtml = "";
             if(type === 'streak' && r.maxStreakStart && r.maxStreakEnd) {
                 const isUpdating = (r.maxStreakEnd === latestValidDateStr && !r.isGraduated);
                 const badge = isUpdating ? ' <span class="updating-badge">🔥更新中</span>' : '';
-                subHtml = `<div style="font-size:10px;color:#888;">${escapeHTML(r.maxStreakStart)} - ${escapeHTML(r.maxStreakEnd)}${badge}</div>`;
+                subHtml = `<div style="font-size:10px;color:#888;">${r.maxStreakStart} - ${r.maxStreakEnd}${badge}</div>`;
             }
 
-            html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'all:all')">
+            html += `<tr onclick="openModal('${r.name}', 'all:all')">
                 <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
-                <td style="width:140px;font-weight:bold">${escapeHTML(r.name)}${subHtml}</td>
+                <td style="width:140px;font-weight:bold">${r.name}${subHtml}</td>
                 <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt" style="width:60px">${valStr}${unit}</div></div></td>
             </tr>`;
         });
@@ -951,15 +945,15 @@ function openMonthlyRankingModal(ym) {
         const rc = rank <= 3 ? `rank-${rank}` : '';
         const w = (max > 0) ? (r.count / max) * 100 : 0;
         
-        html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'month:${ym}')">
+        html += `<tr onclick="openModal('${r.name}', 'month:${ym}')">
             <td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${rank}</span></td>
-            <td style="width:140px; font-weight:bold;">${escapeHTML(r.name)}</td>
+            <td style="width:140px; font-weight:bold;">${r.name}</td>
             <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td>
         </tr>`;
     });
     html += '</tbody></table>';
 
-    document.getElementById('dailyModalTitle').innerText = `${escapeHTML(ym.replace('/','年'))}月のランキング`;
+    document.getElementById('dailyModalTitle').innerText = `${ym.replace('/','年')}月のランキング`;
     document.getElementById('dailyRankingArea').innerHTML = html;
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('dailyModal').style.display = 'block';
@@ -980,10 +974,10 @@ function openDailyRankingModal(dateStr) {
         if (i > 0 && r.count < ranking[i - 1].count) rank = i + 1;
         const rc = rank <= 3 ? `rank-${rank}` : '';
         const w = (r.count / max) * 100;
-        html += `<tr onclick="openModal('${escapeHTML(r.name)}', 'month:${dateStr.split('/').slice(0,2).join('/')}')"><td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px; font-weight:bold;">${escapeHTML(r.name)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
+        html += `<tr onclick="openModal('${r.name}', 'month:${dateStr.split('/').slice(0,2).join('/')}')"><td style="width:50px; text-align:center;"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px; font-weight:bold;">${r.name}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%; background:${r.color}"></div></div><div class="bar-txt">${r.count}</div></div></td></tr>`;
     });
     html += '</tbody></table>';
-    document.getElementById('dailyModalTitle').innerText = `${escapeHTML(dateStr)} のランキング`;
+    document.getElementById('dailyModalTitle').innerText = `${dateStr} のランキング`;
     document.getElementById('dailyRankingArea').innerHTML = html;
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('dailyModal').style.display = 'block';
@@ -1047,7 +1041,50 @@ function updateModalContent() {
             }
         });
 
-        for (let d = 1; d <= daysInMonth; d++) {
+        // ★修正: 活動開始日と終了日を計算し、グラフのX軸（描画範囲）を限定する
+        let mStart = member.joinDate ? new Date(member.joinDate) : null;
+        if (!mStart) {
+            let firstDate = null;
+            allLogs.forEach(l => {
+                if (l.name === name && (parseInt(l.count)||0)>0) {
+                    let d = new Date(l.date);
+                    if (!firstDate || d < firstDate) firstDate = d;
+                }
+            });
+            mStart = firstDate || minDateObj;
+        }
+        if (mStart < minDateObj) mStart = minDateObj;
+        
+        let mEnd = member.gradDate ? new Date(member.gradDate) : maxDateObj;
+        let lastMsgDate = null;
+        allLogs.forEach(l => {
+            if (l.name === name && (parseInt(l.count)||0) > 0) {
+                let d = new Date(l.date);
+                if (!lastMsgDate || d > lastMsgDate) lastMsgDate = d;
+            }
+        });
+        if (member.gradDate && lastMsgDate && lastMsgDate > mEnd) {
+            mEnd = lastMsgDate;
+        }
+        if (mEnd > maxDateObj) mEnd = maxDateObj;
+        mEnd.setHours(23,59,59);
+
+        let pStart = new Date(year, month - 1, 1);
+        let pEnd = new Date(year, month, 0); 
+        pEnd.setHours(23,59,59);
+
+        let actualStart = pStart > mStart ? pStart : mStart;
+        let actualEnd = pEnd < mEnd ? pEnd : mEnd;
+
+        // グラフを描画する日の範囲（例: 潮紗理菜さんの1月なら 1日〜9日）
+        let startDay = (actualStart.getFullYear() === year && actualStart.getMonth() + 1 === month) ? actualStart.getDate() : 1;
+        let endDay = (actualEnd.getFullYear() === year && actualEnd.getMonth() + 1 === month) ? actualEnd.getDate() : daysInMonth;
+        
+        if (startDay > endDay || actualStart > pEnd || actualEnd < pStart) {
+            startDay = 1; endDay = daysInMonth;
+        }
+
+        for (let d = startDay; d <= endDay; d++) {
             const count = logMap[d] || 0;
             sum += count;
             if(count > max) max = count;
@@ -1068,6 +1105,7 @@ function updateModalContent() {
         
         document.getElementById('mTotal').innerText = sum.toLocaleString();
         document.getElementById('mMax').innerText = max.toLocaleString();
+        // ★平均の分母も bars.length（描画した日数）になるため正確になる
         document.getElementById('mAvg2').innerText = bars.length ? (sum / bars.length).toFixed(1) : 0.0;
 
     } else {
@@ -1111,6 +1149,17 @@ function updateModalContent() {
         if (mStart < minDateObj) mStart = minDateObj;
         
         let mEnd = member.gradDate ? new Date(member.gradDate) : maxDateObj;
+        
+        let lastMsgDate = null;
+        allLogs.forEach(l => {
+            if (l.name === name && (parseInt(l.count)||0) > 0) {
+                let d = new Date(l.date);
+                if (!lastMsgDate || d > lastMsgDate) lastMsgDate = d;
+            }
+        });
+        if (member.gradDate && lastMsgDate && lastMsgDate > mEnd) {
+            mEnd = lastMsgDate;
+        }
         if (mEnd > maxDateObj) mEnd = maxDateObj;
 
         let actualStart = pStart > mStart ? pStart : mStart;
