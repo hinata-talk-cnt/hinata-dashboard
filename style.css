@@ -88,7 +88,6 @@ body.no-scroll {
 
 /* =========================================
    レスポンシブ (スマホ対応)
-   ※ CSS設計改善: !importantを削除し詳細度で対応
    ========================================= */
 @media (max-width: 768px) {
     body {
@@ -142,20 +141,26 @@ body.no-scroll {
         padding: 15px;
     }
 
-    body .sidebar {
+    .sidebar {
         position: fixed;
         top: 0;
         left: -320px;
         width: 280px;
-        height: 100vh;
+        
+        /* ★修正: メニューバーを考慮した高さ(dvh)に変更し、一番下に余裕(padding-bottom)を持たせる */
+        height: 100vh !important; /* 古いブラウザ用 */
+        height: 100dvh !important; /* 最新ブラウザ用 */
+        padding: 20px;
+        padding-bottom: 80px !important; /* 指で一番下までスクロールしやすくする余白 */
+        
         background: var(--bg-color);
         z-index: 1000;
-        padding: 20px;
         transition: left 0.3s ease;
         box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+        overflow-y: auto !important;
     }
     
-    body .sidebar.open {
+    .sidebar.open {
         left: 0;
     }
 
@@ -206,18 +211,17 @@ body.no-scroll {
         gap: 5px;
     }
 
-    .container .stats-row {
-        grid-template-columns: repeat(2, 1fr);
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 10px;
     }
     
-    /* 日次モードの時は2カラムにして後半2つ(日数・平均)を隠す */
-    .container .stats-row.daily-mode {
-        grid-template-columns: repeat(2, 1fr);
+    .stats-row.daily-mode {
+        grid-template-columns: repeat(2, 1fr) !important;
     }
-    body .stats-row.daily-mode .stat-box.orange,
-    body .stats-row.daily-mode .stat-box.green {
-        display: none;
+    .stats-row.daily-mode .stat-box.orange,
+    .stats-row.daily-mode .stat-box.green {
+        display: none !important;
     }
 
     .stat-box {
@@ -228,38 +232,38 @@ body.no-scroll {
         font-size: 22px;
     }
 
-    .app-view .controls-bar {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 10px;
+    .controls-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 10px !important;
         gap: 10px;
     }
     
-    .controls-bar .view-title {
-        justify-content: center;
+    .view-title {
+        justify-content: center !important;
         flex-wrap: wrap;
-        font-size: 16px;
+        font-size: 16px !important;
     }
     
-    .controls-bar select {
-        width: 100%;
+    select {
+        width: 100% !important;
     }
 
-    .card .ranking-table td {
-        padding: 8px 4px;
-        font-size: 12px;
+    .ranking-table td {
+        padding: 8px 4px !important;
+        font-size: 12px !important;
     }
     
-    .card .ranking-table td:nth-child(2) {
-        width: 100px;
+    .ranking-table td:nth-child(2) {
+        width: 100px !important;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
     
-    .bar-wrap .bar-txt {
-        width: 45px;
-        font-size: 11px;
+    .bar-txt {
+        width: 45px !important;
+        font-size: 11px !important;
     }
 }
 
@@ -356,10 +360,10 @@ body.no-scroll {
     border: 1px solid #666;
 }
 
-.cal-grid .cal-day.active {
+.cal-day.active {
     border: 2px solid #333;
-    background: #fff;
-    color: #333;
+    background: #fff !important;
+    color: #333 !important;
     font-weight: bold;
 }
 
@@ -368,8 +372,8 @@ body.no-scroll {
     pointer-events: none;
 }
 
-.cal-grid .cal-day.empty {
-    background: transparent;
+.cal-day.empty {
+    background: transparent !important;
     cursor: default;
     pointer-events: none;
 }
@@ -380,7 +384,7 @@ body.no-scroll {
 .lvl-4 { background: #1565c0; color: #fff; }
 
 /* =========================================
-   リスト (月別・期間) - 内部スクロール完全排除
+   リスト (月別・期間)
    ========================================= */
 .archive-list {
     list-style: none;
