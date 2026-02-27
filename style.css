@@ -5,7 +5,6 @@
     box-sizing: border-box;
 }
 
-/* ★追加: スタイリッシュなスクロールバー (Webkitブラウザ用) */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -382,10 +381,12 @@ body.no-scroll {
     pointer-events: none;
 }
 
-.lvl-1 { background: #e3f2fd; color: #1565c0; } 
-.lvl-2 { background: #90caf9; color: #0d47a1; } 
-.lvl-3 { background: #42a5f5; color: #fff; } 
-.lvl-4 { background: #1565c0; color: #fff; }
+/* シンプルなデータあり表示 */
+.cal-day.has-data {
+    background: #e0e0e0;
+    color: #333;
+    font-weight: 500;
+}
 
 /* =========================================
    リスト (月別・期間)
@@ -727,45 +728,8 @@ select {
 }
 
 /* =========================================
-   モーダル & ローディング
+   モーダル
    ========================================= */
-/* ★修正: スピナー用のCSSを追加 */
-#loadingMask {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: #fff;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: opacity 0.5s;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-    font-weight: bold;
-    color: #666;
-    letter-spacing: 1px;
-}
-
 .modal-overlay {
     display: none;
     position: fixed;

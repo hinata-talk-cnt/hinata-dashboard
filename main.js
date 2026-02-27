@@ -524,6 +524,7 @@ function isActiveMemberInPeriod(member) {
     return true;
 }
 
+// ★修正: カレンダーのシンプルな「データあり」表示の適用
 function renderCalendarWidget() {
     const grid = document.getElementById('miniCalendar'); grid.innerHTML = "";
     document.getElementById('calTitle').innerText = `${calYear}年 ${calMonth+1}月`;
@@ -536,12 +537,12 @@ function renderCalendarWidget() {
 
     const first = new Date(calYear, calMonth, 1), last = new Date(calYear, calMonth + 1, 0);
     let startDay = (first.getDay() + 6) % 7; const daysCount = last.getDate();
-    const daily = {}; let maxInMonth = 0;
+    const daily = {};
     allLogs.forEach(l => { 
         const p = l.date.split('/').map(Number);
         if(p[0] === calYear && p[1] === (calMonth+1)) { daily[p[2]] = (daily[p[2]]||0) + (parseInt(l.count)||0); }
     });
-    for(let d in daily) maxInMonth = Math.max(maxInMonth, daily[d]);
+    
     for(let i=0; i<startDay; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
     
     for(let d=1; d<=daysCount; d++) {
@@ -549,10 +550,13 @@ function renderCalendarWidget() {
         const dateStr = formatDateStr(targetDate);
         
         const c = daily[d] || 0; 
-        let lvl = ""; 
-        if(c > 0) lvl = "lvl-1"; 
-        if(maxInMonth > 0) { if(c > maxInMonth * 0.25) lvl = "lvl-2"; if(c > maxInMonth * 0.50) lvl = "lvl-3"; if(c > maxInMonth * 0.75) lvl = "lvl-4"; }
-        const el = document.createElement('div'); el.className = `cal-day ${lvl}`;
+        const el = document.createElement('div'); 
+        el.className = `cal-day`;
+        
+        if(c > 0) {
+            el.classList.add('has-data');
+        }
+
         el.innerText = d; 
         el.dataset.date = dateStr;
         
@@ -761,7 +765,6 @@ function renderRecordPage() {
     allMembers.forEach(m => {
         const s = statsMap[m.name];
 
-        // ★修正: 時間のズレをなくすため、純粋な日付だけのオブジェクトを作って差分を計算する
         const stTime = new Date(s.actualStartDate.getFullYear(), s.actualStartDate.getMonth(), s.actualStartDate.getDate()).getTime();
         const edTime = new Date(s.endDate.getFullYear(), s.endDate.getMonth(), s.endDate.getDate()).getTime();
         
@@ -1164,7 +1167,6 @@ function updateModalContent() {
         
         let activeDaysInPeriod = 0;
         if (actualStart <= actualEnd) {
-            // ★修正: 時間のズレをなくして正確に日数を計算する
             const stTime = new Date(actualStart.getFullYear(), actualStart.getMonth(), actualStart.getDate()).getTime();
             const edTime = new Date(actualEnd.getFullYear(), actualEnd.getMonth(), actualEnd.getDate()).getTime();
             activeDaysInPeriod = Math.round((edTime - stTime) / (24 * 60 * 60 * 1000)) + 1;
