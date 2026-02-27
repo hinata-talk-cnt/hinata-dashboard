@@ -22,7 +22,6 @@ const genKanji = { '1': '一期生', '2': '二期生', '3': '三期生', '4': '�
 // ==========================================
 // ★ ヘルパー関数 (コード共通化)
 // ==========================================
-// Dateオブジェクトを "YYYY/MM/DD" に変換
 const formatDateStr = (dObj) => {
     const y = dObj.getFullYear();
     const m = String(dObj.getMonth() + 1).padStart(2, '0');
@@ -46,25 +45,30 @@ window.onload = () => {
             memberMap[m.name] = m;
         });
         
+        // ★修正: ここで全メンバーの正確な開始・終了日を一括計算します
         processDataRange();
         initApp();
         
         renderRecordPage(); 
         bindEvents();
         
-        // ローディング完了時のフェードアウト
         const mask = document.getElementById('loadingMask');
-        mask.style.opacity = '0';
-        setTimeout(() => { mask.style.display = 'none'; }, 500);
+        if (mask) {
+            mask.style.opacity = '0';
+            setTimeout(() => { mask.style.display = 'none'; }, 500);
+        }
 
     }).catch(e => {
         alert("読み込みエラーが発生しました。時間を置いて再度お試しください。\n" + e);
-        document.getElementById('loadingMask').style.display = 'none';
+        const mask = document.getElementById('loadingMask');
+        if (mask) mask.style.display = 'none';
     });
 };
 
 function processDataRange() {
     let maxTs = 0;
+    
+    // 1. 全体の日付範囲を決定
     allLogs.forEach(l => { 
         const c = parseInt(l.count) || 0;
         if(l.date && c > 0) { 
@@ -88,6 +92,57 @@ function processDataRange() {
         if(!minDateObj) minDateObj = now;
         if(!maxDateObj) maxDateObj = now;
     }
+
+    // 2. メンバーごとの最初/最後のログ日を収集
+    allMembers.forEach(m => {
+        m.firstLogDate = null;
+        m.lastLogDate = null;
+    });
+
+    allLogs.forEach(l => {
+        const count = parseInt(l.count) || 0;
+        if (count > 0 && memberMap[l.name]) {
+            const d = new Date(l.date);
+            d.setHours(0, 0, 0, 0);
+            const m = memberMap[l.name];
+            if (!m.firstLogDate || d < m.firstLogDate) m.firstLogDate = d;
+            if (!m.lastLogDate || d > m.lastLogDate) m.lastLogDate = d;
+        }
+    });
+
+    // ★ 3. すべての計算の基準となる「実質的な活動開始日・終了日」を確定させる
+    allMembers.forEach(m => {
+        // --- 開始日の決定 ---
+        if (m.joinDate) {
+            m.actualStartDate = new Date(m.joinDate);
+            m.actualStartDate.setHours(0, 0, 0, 0);
+        } else if (m.firstLogDate) {
+            m.actualStartDate = new Date(m.firstLogDate);
+        } else {
+            m.actualStartDate = new Date(minDateObj);
+        }
+        // 当サイトの集計開始日(11月1日)より前なら、集計開始日に丸める
+        if (m.actualStartDate < minDateObj) {
+            m.actualStartDate = new Date(minDateObj);
+        }
+
+        // --- 終了日の決定 ---
+        m.actualEndDate = new Date(maxDateObj);
+        m.actualEndDate.setHours(23, 59, 59, 999);
+        
+        if (m.gradDate) {
+            const gradD = new Date(m.gradDate);
+            gradD.setHours(23, 59, 59, 999);
+            
+            // 卒業日以降にも「最後の挨拶」などで送信があれば、そこまで延長
+            if (m.lastLogDate && m.lastLogDate > gradD) {
+                m.actualEndDate = new Date(m.lastLogDate);
+                m.actualEndDate.setHours(23, 59, 59, 999);
+            } else {
+                m.actualEndDate = gradD;
+            }
+        }
+    });
 }
 
 function bindEvents() {
@@ -438,24 +493,42 @@ function updateDashboard() {
     renderCalendarWidget(); renderRankingView();
 }
 
+// ★修正: 卒業日だけでなく、加入日(活動開始日)も必ずチェックするように変更
 function isActiveMemberInPeriod(member) {
-    if (!member.gradDate) return true;
-    const gradDate = new Date(member.gradDate);
-    gradDate.setHours(23, 59, 59, 999);
-    let periodStart;
+    let pStart, pEnd;
+    
     if (currentFilter.type === 'day') {
-        periodStart = new Date(currentFilter.value);
+        pStart = new Date(currentFilter.value);
+        pStart.setHours(0, 0, 0, 0);
+        pEnd = new Date(currentFilter.value);
+        pEnd.setHours(23, 59, 59, 999);
     } else if (currentFilter.type === 'month') {
         const [y, m] = currentFilter.value.split('/').map(Number);
-        periodStart = new Date(y, m - 1, 1);
+        pStart = new Date(y, m - 1, 1);
+        pStart.setHours(0, 0, 0, 0);
+        pEnd = new Date(y, m, 0); 
+        pEnd.setHours(23, 59, 59, 999);
     } else if (currentFilter.type === 'year' || currentFilter.type === 'h1') {
-        periodStart = new Date(currentFilter.value, 0, 1);
+        pStart = new Date(currentFilter.value, 0, 1);
+        pStart.setHours(0, 0, 0, 0);
+        pEnd = (currentFilter.type === 'h1') ? new Date(currentFilter.value, 5, 30) : new Date(currentFilter.value, 11, 31);
+        pEnd.setHours(23, 59, 59, 999);
     } else if (currentFilter.type === 'h2') {
-        periodStart = new Date(currentFilter.value, 6, 1);
+        pStart = new Date(currentFilter.value, 6, 1);
+        pStart.setHours(0, 0, 0, 0);
+        pEnd = new Date(currentFilter.value, 11, 31);
+        pEnd.setHours(23, 59, 59, 999);
     } else {
-        return true;
+        return true; // 全期間
     }
-    return periodStart <= gradDate;
+
+    // 表示しようとしている期間の「終了日」が、メンバーの活動開始日より前なら非表示（まだ加入していない）
+    if (pEnd < member.actualStartDate) return false;
+
+    // 表示しようとしている期間の「開始日」が、メンバーの活動終了日より後なら非表示（すでに卒業している）
+    if (pStart > member.actualEndDate) return false;
+
+    return true;
 }
 
 function renderCalendarWidget() {
@@ -605,16 +678,8 @@ function renderRecordPage() {
     const oneDay = 24 * 60 * 60 * 1000;
     
     // 1. 初期化
+    // ★修正: 事前計算された actualStartDate / actualEndDate を絶対の基準として使用
     allMembers.forEach(m => {
-        let startDate = minDateObj;
-        if (m.joinDate) startDate = new Date(m.joinDate);
-
-        let endDate = maxDateObj;
-        if (m.gradDate) {
-            const gD = new Date(m.gradDate);
-            if (gD < endDate) endDate = gD;
-        }
-
         statsMap[m.name] = { 
             name: m.name, 
             color: m.color || '#ccc',
@@ -622,11 +687,11 @@ function renderRecordPage() {
             highVolumeDays: 0, perfectMonthCount: 0, top3Count: 0,
             streakStart: null, streakEnd: null,
             maxStreakStart: null, maxStreakEnd: null,
-            startDate: startDate, endDate: endDate,
-            hasJoinDate: !!m.joinDate, isGraduated: !!m.gradDate,
-            logs: {}, 
-            firstLogDate: null,
-            lastLogDate: null
+            
+            actualStartDate: m.actualStartDate,
+            endDate: m.actualEndDate,
+            isGraduated: !!m.gradDate,
+            logs: {}
         };
     });
 
@@ -639,19 +704,8 @@ function renderRecordPage() {
             s.total += count;
             if (count > 0) {
                 s.activeDays++;
-                const d = new Date(l.date);
-                if (!s.firstLogDate || d < s.firstLogDate) s.firstLogDate = d;
-                if (!s.lastLogDate || d > s.lastLogDate) s.lastLogDate = d;
                 if (count >= 10) s.highVolumeDays++;
             }
-        }
-    });
-
-    // 卒業生の実質終了日を補正
-    allMembers.forEach(m => {
-        const s = statsMap[m.name];
-        if (s.isGraduated && s.lastLogDate && s.lastLogDate > s.endDate) {
-            s.endDate = s.lastLogDate; 
         }
     });
 
@@ -669,7 +723,8 @@ function renderRecordPage() {
         const dailyRank = [];
         allMembers.forEach(m => {
             const s = statsMap[m.name];
-            if (dObj > s.endDate) return; 
+            // その日に活動していないメンバーは除外
+            if (dObj < s.actualStartDate || dObj > s.endDate) return; 
 
             const count = s.logs[dateStr] || 0;
             if (count > 0) dailyRank.push({ name: m.name, count: count });
@@ -697,7 +752,7 @@ function renderRecordPage() {
 
         allMembers.forEach(m => {
             const s = statsMap[m.name];
-            if (s.startDate > monthStart || s.endDate < monthEnd) return; 
+            if (s.actualStartDate > monthStart || s.endDate < monthEnd) return; 
 
             let isPerfect = true;
             for (let d = 1; d <= daysInMonth; d++) {
@@ -714,28 +769,33 @@ function renderRecordPage() {
     // 個別計算 (Duration, Streak)
     allMembers.forEach(m => {
         const s = statsMap[m.name];
-        let realStart = s.startDate;
-        if (!s.hasJoinDate && s.firstLogDate) realStart = s.firstLogDate;
-        if (realStart < minDateObj) realStart = minDateObj;
 
-        // 日次・月次それぞれの分母を計算
-        let diffTime = s.endDate - realStart;
+        let diffTime = s.endDate.getTime() - s.actualStartDate.getTime();
         if (diffTime < 0) diffTime = 0;
         const durationDays = Math.ceil(diffTime / oneDay) + 1;
-        s.duration = durationDays > 0 ? durationDays : 1; 
+        
+        // maxDateObjより開始日が未来の場合などは除外（duration = 0）
+        s.duration = (s.actualStartDate > maxDateObj || diffTime < 0) ? 0 : durationDays; 
 
-        const startY = realStart.getFullYear();
-        const startM = realStart.getMonth();
+        const startY = s.actualStartDate.getFullYear();
+        const startM = s.actualStartDate.getMonth();
         const eY = s.endDate.getFullYear();
         const eM = s.endDate.getMonth();
         const durationMonths = (eY - startY) * 12 + (eM - startM) + 1;
-        s.durationMonths = durationMonths > 0 ? durationMonths : 1;
+        s.durationMonths = (s.actualStartDate > maxDateObj || diffTime < 0) ? 0 : durationMonths;
 
         let tempStreak = 0;
         let streakStart = null;
 
         dateStrList.forEach(dateStr => {
-            if (new Date(dateStr) > s.endDate) return;
+            const dObj = new Date(dateStr);
+            // 活動日以外はストリークをリセット
+            if (dObj < s.actualStartDate || dObj > s.endDate) {
+                tempStreak = 0;
+                streakStart = null;
+                return;
+            }
+            
             const count = s.logs[dateStr] || 0;
             
             if (count > 0) {
@@ -884,6 +944,9 @@ function renderRecordPage() {
 
         let rank = 1;
         dataList.forEach((r, i) => {
+            // ★加入前のメンバー（duration = 0）はランキングから非表示にする
+            if (r.duration === 0) return;
+
             const targetKey = statKeyMap[type];
             let val = r[targetKey] || 0;
 
@@ -1040,40 +1103,13 @@ function updateModalContent() {
             }
         });
 
-        // 活動開始日と終了日を計算し、グラフのX軸（描画範囲）を限定する
-        let mStart = member.joinDate ? new Date(member.joinDate) : null;
-        if (!mStart) {
-            let firstDate = null;
-            allLogs.forEach(l => {
-                if (l.name === name && (parseInt(l.count)||0)>0) {
-                    let d = new Date(l.date);
-                    if (!firstDate || d < firstDate) firstDate = d;
-                }
-            });
-            mStart = firstDate || minDateObj;
-        }
-        if (mStart < minDateObj) mStart = minDateObj;
-        
-        let mEnd = member.gradDate ? new Date(member.gradDate) : maxDateObj;
-        let lastMsgDate = null;
-        allLogs.forEach(l => {
-            if (l.name === name && (parseInt(l.count)||0) > 0) {
-                let d = new Date(l.date);
-                if (!lastMsgDate || d > lastMsgDate) lastMsgDate = d;
-            }
-        });
-        if (member.gradDate && lastMsgDate && lastMsgDate > mEnd) {
-            mEnd = lastMsgDate;
-        }
-        if (mEnd > maxDateObj) mEnd = maxDateObj;
-        mEnd.setHours(23,59,59);
+        // ★修正: 事前計算された actualStartDate を使用
+        let actualStart = member.actualStartDate;
+        let actualEnd = member.actualEndDate;
 
         let pStart = new Date(year, month - 1, 1);
         let pEnd = new Date(year, month, 0); 
         pEnd.setHours(23,59,59);
-
-        let actualStart = pStart > mStart ? pStart : mStart;
-        let actualEnd = pEnd < mEnd ? pEnd : mEnd;
 
         // グラフを描画する日の範囲
         let startDay = (actualStart.getFullYear() === year && actualStart.getMonth() + 1 === month) ? actualStart.getDate() : 1;
@@ -1133,35 +1169,8 @@ function updateModalContent() {
             pEnd = new Date(value, 11, 31);
         }
 
-        let mStart = member.joinDate ? new Date(member.joinDate) : null;
-        if (!mStart) {
-            let firstDate = null;
-            allLogs.forEach(l => {
-                if (l.name === name && (parseInt(l.count)||0)>0) {
-                    let d = new Date(l.date);
-                    if (!firstDate || d < firstDate) firstDate = d;
-                }
-            });
-            mStart = firstDate || minDateObj;
-        }
-        if (mStart < minDateObj) mStart = minDateObj;
-        
-        let mEnd = member.gradDate ? new Date(member.gradDate) : maxDateObj;
-        
-        let lastMsgDate = null;
-        allLogs.forEach(l => {
-            if (l.name === name && (parseInt(l.count)||0) > 0) {
-                let d = new Date(l.date);
-                if (!lastMsgDate || d > lastMsgDate) lastMsgDate = d;
-            }
-        });
-        if (member.gradDate && lastMsgDate && lastMsgDate > mEnd) {
-            mEnd = lastMsgDate;
-        }
-        if (mEnd > maxDateObj) mEnd = maxDateObj;
-
-        let actualStart = pStart > mStart ? pStart : mStart;
-        let actualEnd = pEnd < mEnd ? pEnd : mEnd;
+        let actualStart = pStart > member.actualStartDate ? pStart : member.actualStartDate;
+        let actualEnd = pEnd < member.actualEndDate ? pEnd : member.actualEndDate;
         
         let activeDaysInPeriod = 0;
         if (actualStart <= actualEnd) {
