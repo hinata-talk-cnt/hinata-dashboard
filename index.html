@@ -3,24 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日向坂46メッセージ集計</title>
+    <title>日向坂46 Message Dashboard</title>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZYQHLZR55J"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-ZYQHLZR55J');
-    </script>
-    
     <meta property="og:title" content="日向坂46 Message Dashboard">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <style>
+        body { margin: 0; }
+        #loadingMask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid #f3f3f3; border-top: 5px solid #4b89dc; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { font-weight: bold; color: #666; letter-spacing: 1px; font-family: sans-serif; }
+    </style>
+
     <script>
         const ver = new Date().getTime();
         const link = document.createElement('link');
@@ -39,10 +46,10 @@
 <div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
 
 <div class="mobile-header">
-    <button id="hamburgerBtn" class="hamburger-btn">
+    <button id="hamburgerBtn" class="hamburger-btn" aria-label="メニュー">
         <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
-    <div class="mobile-header-title">📊 日向坂46メッセージ</div>
+    <div class="mobile-header-title">📊 日向坂46 Message</div>
 </div>
 
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
