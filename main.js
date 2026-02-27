@@ -45,7 +45,6 @@ window.onload = () => {
             memberMap[m.name] = m;
         });
         
-        // ★修正: ここで全メンバーの正確な開始・終了日を一括計算します
         processDataRange();
         initApp();
         
@@ -110,7 +109,7 @@ function processDataRange() {
         }
     });
 
-    // ★ 3. すべての計算の基準となる「実質的な活動開始日・終了日」を確定させる
+    // 3. すべての計算の基準となる「実質的な活動開始日・終了日」を確定させる
     allMembers.forEach(m => {
         // --- 開始日の決定 ---
         if (m.joinDate) {
@@ -121,7 +120,6 @@ function processDataRange() {
         } else {
             m.actualStartDate = new Date(minDateObj);
         }
-        // 当サイトの集計開始日(11月1日)より前なら、集計開始日に丸める
         if (m.actualStartDate < minDateObj) {
             m.actualStartDate = new Date(minDateObj);
         }
@@ -134,7 +132,6 @@ function processDataRange() {
             const gradD = new Date(m.gradDate);
             gradD.setHours(23, 59, 59, 999);
             
-            // 卒業日以降にも「最後の挨拶」などで送信があれば、そこまで延長
             if (m.lastLogDate && m.lastLogDate > gradD) {
                 m.actualEndDate = new Date(m.lastLogDate);
                 m.actualEndDate.setHours(23, 59, 59, 999);
@@ -493,7 +490,6 @@ function updateDashboard() {
     renderCalendarWidget(); renderRankingView();
 }
 
-// ★修正: 卒業日だけでなく、加入日(活動開始日)も必ずチェックするように変更
 function isActiveMemberInPeriod(member) {
     let pStart, pEnd;
     
@@ -519,13 +515,10 @@ function isActiveMemberInPeriod(member) {
         pEnd = new Date(currentFilter.value, 11, 31);
         pEnd.setHours(23, 59, 59, 999);
     } else {
-        return true; // 全期間
+        return true; 
     }
 
-    // 表示しようとしている期間の「終了日」が、メンバーの活動開始日より前なら非表示（まだ加入していない）
     if (pEnd < member.actualStartDate) return false;
-
-    // 表示しようとしている期間の「開始日」が、メンバーの活動終了日より後なら非表示（すでに卒業している）
     if (pStart > member.actualEndDate) return false;
 
     return true;
@@ -678,7 +671,6 @@ function renderRecordPage() {
     const oneDay = 24 * 60 * 60 * 1000;
     
     // 1. 初期化
-    // ★修正: 事前計算された actualStartDate / actualEndDate を絶対の基準として使用
     allMembers.forEach(m => {
         statsMap[m.name] = { 
             name: m.name, 
@@ -723,7 +715,6 @@ function renderRecordPage() {
         const dailyRank = [];
         allMembers.forEach(m => {
             const s = statsMap[m.name];
-            // その日に活動していないメンバーは除外
             if (dObj < s.actualStartDate || dObj > s.endDate) return; 
 
             const count = s.logs[dateStr] || 0;
@@ -770,11 +761,14 @@ function renderRecordPage() {
     allMembers.forEach(m => {
         const s = statsMap[m.name];
 
-        let diffTime = s.endDate.getTime() - s.actualStartDate.getTime();
-        if (diffTime < 0) diffTime = 0;
-        const durationDays = Math.ceil(diffTime / oneDay) + 1;
+        // ★修正: 時間のズレをなくすため、純粋な日付だけのオブジェクトを作って差分を計算する
+        const stTime = new Date(s.actualStartDate.getFullYear(), s.actualStartDate.getMonth(), s.actualStartDate.getDate()).getTime();
+        const edTime = new Date(s.endDate.getFullYear(), s.endDate.getMonth(), s.endDate.getDate()).getTime();
         
-        // maxDateObjより開始日が未来の場合などは除外（duration = 0）
+        let diffTime = edTime - stTime;
+        if (diffTime < 0) diffTime = 0;
+        const durationDays = Math.round(diffTime / oneDay) + 1;
+        
         s.duration = (s.actualStartDate > maxDateObj || diffTime < 0) ? 0 : durationDays; 
 
         const startY = s.actualStartDate.getFullYear();
@@ -789,7 +783,6 @@ function renderRecordPage() {
 
         dateStrList.forEach(dateStr => {
             const dObj = new Date(dateStr);
-            // 活動日以外はストリークをリセット
             if (dObj < s.actualStartDate || dObj > s.endDate) {
                 tempStreak = 0;
                 streakStart = null;
@@ -944,7 +937,6 @@ function renderRecordPage() {
 
         let rank = 1;
         dataList.forEach((r, i) => {
-            // ★加入前のメンバー（duration = 0）はランキングから非表示にする
             if (r.duration === 0) return;
 
             const targetKey = statKeyMap[type];
@@ -1103,7 +1095,6 @@ function updateModalContent() {
             }
         });
 
-        // ★修正: 事前計算された actualStartDate を使用
         let actualStart = member.actualStartDate;
         let actualEnd = member.actualEndDate;
 
@@ -1111,7 +1102,6 @@ function updateModalContent() {
         let pEnd = new Date(year, month, 0); 
         pEnd.setHours(23,59,59);
 
-        // グラフを描画する日の範囲
         let startDay = (actualStart.getFullYear() === year && actualStart.getMonth() + 1 === month) ? actualStart.getDate() : 1;
         let endDay = (actualEnd.getFullYear() === year && actualEnd.getMonth() + 1 === month) ? actualEnd.getDate() : daysInMonth;
         
@@ -1174,7 +1164,10 @@ function updateModalContent() {
         
         let activeDaysInPeriod = 0;
         if (actualStart <= actualEnd) {
-            activeDaysInPeriod = Math.ceil((actualEnd - actualStart) / (24 * 60 * 60 * 1000)) + 1;
+            // ★修正: 時間のズレをなくして正確に日数を計算する
+            const stTime = new Date(actualStart.getFullYear(), actualStart.getMonth(), actualStart.getDate()).getTime();
+            const edTime = new Date(actualEnd.getFullYear(), actualEnd.getMonth(), actualEnd.getDate()).getTime();
+            activeDaysInPeriod = Math.round((edTime - stTime) / (24 * 60 * 60 * 1000)) + 1;
         }
         if (activeDaysInPeriod < 1) activeDaysInPeriod = 1;
 
