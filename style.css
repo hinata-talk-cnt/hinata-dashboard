@@ -385,7 +385,6 @@ body.no-scroll {
     pointer-events: none;
 }
 
-/* シンプルなデータあり表示 */
 .cal-day.has-data {
     background: #e0e0e0;
     color: #333;
