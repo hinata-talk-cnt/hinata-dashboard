@@ -1,3 +1,6 @@
+// ==========================================
+// ★ グローバル状態（State）の管理
+// ==========================================
 export const state = {
     allLogs: [],
     allMembers: [],
@@ -17,6 +20,9 @@ export const state = {
 
 export const genKanji = { '1': '一期生', '2': '二期生', '3': '三期生', '4': '四期生', '5': '五期生' };
 
+// ==========================================
+// ★ 共通ヘルパー関数
+// ==========================================
 export const formatDateStr = (dObj) => {
     const y = dObj.getFullYear();
     const m = String(dObj.getMonth() + 1).padStart(2, '0');

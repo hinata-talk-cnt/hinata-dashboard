@@ -1,4 +1,4 @@
-import { state, isDateInPeriod, formatDateStr } from './store.js';
+import { state, isDateInPeriod } from './store.js';
 
 export const openMonthlyRankingModal = (ym) => {
     document.body.classList.add('no-scroll');

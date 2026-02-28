@@ -30,7 +30,9 @@ export const renderCalendarWidget = () => {
         const el = document.createElement('div'); 
         el.className = `cal-day`;
         
+        // ★あなたが実装してくれた最新のシンプル化ロジックです
         if(c > 0) el.classList.add('has-data');
+        
         el.innerText = d; 
         el.dataset.date = dateStr;
         
