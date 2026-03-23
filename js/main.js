@@ -371,6 +371,10 @@ function bindEvents() {
     document.getElementById('genSelector2').onchange = renderMemberCatalog;
     document.getElementById('recordTypeSelector').onchange = renderRecordPage;
 
+    // ★ 5期生比較チェックボックスのイベントリスナーを追加
+    const recordSince5thGen = document.getElementById('recordSince5thGen');
+    if (recordSince5thGen) recordSince5thGen.onchange = renderRecordPage;
+
     // カレンダーの日付マス（.cal-day）クリック時のイベント委譲
     // （マスごとにイベントを登録するのではなく、親要素で一括キャッチすることで軽量化）
     document.getElementById('miniCalendar').addEventListener('click', (e) => {

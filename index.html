@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     
-    <!-- モバイル端末での表示を最適化するためのビューポート設定 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日向坂46メッセージ集計</title>
 
-    <!-- Google Analytics 測定用コード -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZYQHLZR55J"></script>
     <script>
     window.dataLayer = window.dataLayer || [];
@@ -17,15 +15,12 @@
     gtag('config', 'G-ZYQHLZR55J');
     </script>
 
-    <!-- OGP設定：SNSシェア時のリッチ表示用 -->
     <meta property="og:title" content="日向坂46メッセージ集計">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
 
-    <!-- Chart.jsライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- ローディング画面用のインラインCSS（外部CSSの読み込みを待たずに即座に表示させるため直書き） -->
     <style>
         body { margin: 0; }
         #loadingMask {
@@ -43,7 +38,6 @@
         .loading-text { font-weight: bold; color: #666; letter-spacing: 1px; font-family: sans-serif; }
     </style>
 
-    <!-- 外部CSSの読み込み (ブラウザキャッシュ回避のため現在時刻を変数にして付与) -->
     <script>
         const ver = new Date().getTime();
         const link = document.createElement('link');
@@ -54,13 +48,11 @@
 </head>
 <body>
 
-<!-- ローディングマスク (JSでデータ取得完了後に非表示) -->
 <div id="loadingMask">
     <div class="spinner"></div>
     <div class="loading-text">データを読み込んでいます...</div>
 </div>
 
-<!-- モバイル用ヘッダー & 警告表示 -->
 <div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
 
 <header class="mobile-header">
@@ -70,17 +62,13 @@
     <div class="mobile-header-title">📊 日向坂46メッセージ</div>
 </header>
 
-<!-- モバイル表示時のサイドバー開閉用背景 -->
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-<!-- === メインレイアウトコンテナ === -->
 <div class="container">
     
-    <!-- ▼ 左サイドバー ▼ -->
     <aside class="sidebar" id="sidebar">
         <button id="closeSidebarBtn" class="close-sidebar-btn" aria-label="閉じる">×</button>
         
-        <!-- Information セクション (2023年11月以降のデータであることを見せるため最上部に配置) -->
         <section class="card">
             <div class="card-header">ℹ️ Information</div>
             <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
@@ -96,7 +84,6 @@
             </div>
         </section>
 
-        <!-- カレンダー セクション -->
         <section class="card">
             <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" style="font-size:12px; color:#888;"></span></div>
             <div class="calendar-widget">
@@ -111,11 +98,9 @@
             </div>
         </section>
         
-        <!-- アーカイブ (月別・期間別) セクション -->
         <section class="card"><div class="card-header">📂 月別</div><ul class="archive-list" id="archiveList"></ul></section>
         <section class="card"><div class="card-header">📂 期間</div><ul class="archive-list" id="periodList"></ul></section>
         
-        <!-- 開発者情報 -->
         <section class="card">
             <div class="card-header">Developer</div>
             <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
@@ -126,17 +111,14 @@
         </section>
     </aside>
 
-    <!-- ▼ メインコンテンツ領域 ▼ -->
     <main class="main-content" id="mainContentScroll">
         
-        <!-- タブナビゲーション -->
         <nav class="main-nav">
             <button id="navAnalytics" class="nav-btn active">📊 データ</button>
             <button id="navMembers" class="nav-btn">👥 メンバー</button>
             <button id="navRecords" class="nav-btn">🏆 記録</button>
         </nav>
         
-        <!-- 上部サマリー指標 (TOTAL, TOP MEMBER等) -->
         <div class="stats-row" id="topStatsRow">
             <div class="stat-box blue"><span class="stat-label">TOTAL</span><span class="stat-val" id="valStat1">-</span><div class="stat-sub">期間合計</div></div>
             <div class="stat-box pink"><span class="stat-label">TOP MEMBER</span><span class="stat-val" id="valStat2">-</span><div class="stat-sub" id="subStat2">最多送信</div></div>
@@ -144,10 +126,8 @@
             <div class="stat-box green"><span class="stat-label">AVG / DAY</span><span class="stat-val" id="valStat4">-</span><div class="stat-sub">1日平均</div></div>
         </div>
 
-        <!-- アプリの各画面ビュー群 (JSで .active クラスを切り替えて表示制御) -->
         <section class="card">
             
-            <!-- [1] データタブ：ランキング表示 -->
             <div id="viewAnalytics" class="app-view active">
                 <div class="controls-bar">
                     <div class="view-title">
@@ -160,7 +140,6 @@
                 <div id="rankingArea"></div>
             </div>
             
-            <!-- [2] メンバータブ：アイコン一覧表示 -->
             <div id="viewMembers" class="app-view">
                 <div class="controls-bar">
                     <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="期別絞り込み"></select>
@@ -168,10 +147,9 @@
                 <div id="memberGrid"></div>
             </div>
 
-            <!-- [3] 記録タブ：各種最高記録表示 -->
             <div id="viewRecords" class="app-view">
-                <div class="controls-bar">
-                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="記録の種類">
+                <div class="controls-bar" style="flex-direction: row; flex-wrap: wrap; gap: 10px;">
+                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px; flex: 1; min-width: 200px;" aria-label="記録の種類">
                         <optgroup label="▼ 日次記録 (Daily)">
                             <option value="daily_max">👑 最多送信数</option>
                             <option value="wins">🥇 1位獲得回数</option>
@@ -191,6 +169,13 @@
                             <option value="active_rate">📈 アクティブ率</option>
                         </optgroup>
                     </select>
+                    
+                    <div style="display: flex; align-items: center; background: #f9f9f9; border: 1px solid #ddd; padding: 6px 12px; border-radius: 6px;">
+                        <label style="font-size: 13px; font-weight: bold; color: #444; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" id="recordSince5thGen" style="cursor: pointer; margin: 0;" />
+                            五期生開始以降で比較
+                        </label>
+                    </div>
                 </div>
                 <div id="recordContentArea"></div>
             </div>
@@ -198,10 +183,8 @@
     </main>
 </div>
 
-<!-- === モーダルUI群 === -->
 <div id="modalOverlay" class="modal-overlay"></div>
 
-<!-- [A] メンバー個別詳細モーダル (グラフ表示) -->
 <div id="modal" class="modal" role="dialog" aria-modal="true">
     <div class="modal-head">
         <div class="modal-nav-row">
@@ -236,11 +219,9 @@
         </div>
     </div>
     
-    <!-- Chart.js 描画用キャンバス -->
     <div class="chart-box"><canvas id="personalChart"></canvas></div>
 </div>
 
-<!-- [B] 日次・月次ランキング詳細モーダル -->
 <div id="dailyModal" class="modal" role="dialog" aria-modal="true">
     <div class="modal-head">
         <div class="modal-title-col">
@@ -251,7 +232,6 @@
     <div id="dailyRankingArea" class="daily-list-wrap"></div>
 </div>
 
-<!-- メインスクリプトの読み込み (ES Modules有効化・キャッシュクリア対策) -->
 <script type="module">
     import('./js/main.js?v=' + new Date().getTime()).catch(console.error);
 </script>
