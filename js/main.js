@@ -462,6 +462,47 @@ function switchModalMember(offset) {
     openModal(targetList[newIndex], document.getElementById('modalPeriodSelector').value);
 }
 
+const toggleBtn = document.getElementById('toggleViewBtn');
+const viewportMeta = document.querySelector('meta[name="viewport"]');
+const warningBanner = document.getElementById('mobileWarningBanner');
+const warningText = document.getElementById('warningText');
+
+// 記憶している設定を読み込む
+let isPCView = localStorage.getItem('isPCView') === 'true';
+
+// 表示を切り替える関数
+function applyView() {
+    if (isPCView) {
+        // PC表示モード
+        viewportMeta.setAttribute('content', 'width=1200');
+        if (toggleBtn) toggleBtn.innerHTML = '📱 スマホ表示';
+        if (warningText) warningText.innerHTML = '💡 現在PCレイアウトで表示中';
+        
+        // ★重要：画面幅が1200pxになるとCSSでバナーが消えてしまうのを防ぐ
+        if (warningBanner) warningBanner.style.display = 'flex'; 
+    } else {
+        // スマホ表示モード（通常）
+        viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0');
+        if (toggleBtn) toggleBtn.innerHTML = '💻 PC表示';
+        if (warningText) warningText.innerHTML = '⚠️ 当サイトはPC環境での閲覧を推奨しています';
+        
+        // スタイルを空にして、CSSの本来のルール（PCなら隠す、スマホなら出す）に戻す
+        if (warningBanner) warningBanner.style.display = ''; 
+    }
+}
+
+// ページ読み込み時に実行
+applyView();
+
+// ボタンが押された時の処理
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+        isPCView = !isPCView; // 状態を反転
+        localStorage.setItem('isPCView', isPCView); // 記憶させる
+        applyView(); // 画面に反映
+    });
+}
+
 // --------------------------------------------------
 // モジュール外からのアクセス許可 (Global Expose)
 // --------------------------------------------------

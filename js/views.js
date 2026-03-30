@@ -2,15 +2,11 @@ import { state, genKanji, isDateInPeriod, isActiveMemberInPeriod, formatDateStr 
 
 /**
  * 「データ」タブのメインビュー（ランキング表）を描画する関数。
- * 選択中の期間（state.currentFilter）に該当するログを集計し、降順でリスト化
  */
 export const renderRankingView = () => {
     const genSel = document.getElementById('genSelector');
     const currentGen = String(genSel.value); 
     
-    // --------------------------------------------------
-    // 1. 選択期間内のメンバー別送信数を集計
-    // --------------------------------------------------
     const totals = {};
     state.allLogs.forEach(l => { 
         if(isDateInPeriod(l.date, state.currentFilter)) {
@@ -19,9 +15,6 @@ export const renderRankingView = () => {
         }
     });
 
-    // --------------------------------------------------
-    // 2. プルダウン（期別絞り込み）の動的生成
-    // --------------------------------------------------
     const activeGens = new Set();
     state.allMembers.forEach(m => { if ((totals[m.name] || 0) > 0) activeGens.add(m.gen); });
     
@@ -35,9 +28,6 @@ export const renderRankingView = () => {
     const optionsArr = Array.from(genSel.options);
     if (optionsArr.some(o => o.value === savedVal)) genSel.value = savedVal; else genSel.value = "all";
 
-    // --------------------------------------------------
-    // 3. ランキング用データのソートとHTML生成
-    // --------------------------------------------------
     const gen = genSel.value;
     const targets = state.allMembers.filter(m => {
         if (gen !== 'all' && String(m.gen) !== String(gen)) return false;
@@ -107,7 +97,6 @@ export const renderMemberCatalog = () => {
 
 /**
  * 「記録」タブの各種ランキングを描画する関数。
- * 「5期生加入以降」の絞り込み時は、卒業メンバーを自動で除外します。
  */
 export const renderRecordPage = () => {
     const type = document.getElementById('recordTypeSelector').value;
@@ -119,7 +108,7 @@ export const renderRecordPage = () => {
     let dataList = []; let maxVal = 0;
     
     // --------------------------------------------------
-    // ★ 基準日（集計スタート日）の決定
+    // ★ 基準日の決定（5期生以降フィルター処理）
     // --------------------------------------------------
     let baseMinDateObj = state.minDateObj;
     if (isSince5thGen) {
@@ -131,18 +120,59 @@ export const renderRecordPage = () => {
         }
     }
 
-    const filteredLogs = state.allLogs.filter(l => new Date(l.date) >= baseMinDateObj);
+    // --------------------------------------------------
+    // ★ 完了月の算出
+    // --------------------------------------------------
+    const maxD = state.maxDateObj;
+    const isEndOfMonth = new Date(maxD.getFullYear(), maxD.getMonth() + 1, 0).getDate() === maxD.getDate();
+    let compY = maxD.getFullYear();
+    let compM = maxD.getMonth();
+    if (!isEndOfMonth) {
+        compM--;
+        if (compM < 0) { compM = 11; compY--; }
+    }
+    const compYM = compY * 100 + compM; 
 
+    // --------------------------------------------------
+    // ★ 画面右上に表示する「集計期間テキスト」の生成と反映
+    // --------------------------------------------------
+    const isMonthlyRecord = ['monthly_max', 'monthly_wins', 'average_monthly', 'perfect_months'].includes(type);
+    const sY = baseMinDateObj.getFullYear(), sM = baseMinDateObj.getMonth() + 1, sD = baseMinDateObj.getDate();
+    const eY = state.maxDateObj.getFullYear(), eM = state.maxDateObj.getMonth() + 1, eD = state.maxDateObj.getDate();
+    let periodText = "";
+    
+    if (isMonthlyRecord) {
+        periodText = `📅 集計対象: ${sY}年${sM}月 ～ ${compY}年${compM + 1}月`;
+        if (!isEndOfMonth) periodText += ` (※${eM}月は進行中のため除外)`;
+    } else {
+        periodText = `📅 集計対象: ${sY}/${String(sM).padStart(2,'0')}/${String(sD).padStart(2,'0')} ～ ${eY}/${String(eM).padStart(2,'0')}/${String(eD).padStart(2,'0')}`;
+    }
+
+    const latestDateStr = periodText;
+
+    // Informationパネルの終了日を更新
+    const infoEndDateEl = document.getElementById('info-end-date');
+    if (infoEndDateEl) {
+        infoEndDateEl.textContent = latestDateStr;
+    }
+    
+    const infoEl = document.getElementById('recordPeriodInfo');
+    if (infoEl) infoEl.innerText = periodText;
+
+    const filteredLogs = state.allLogs.filter(l => new Date(l.date) >= baseMinDateObj);
     const statsMap = {}; const oneDay = 24 * 60 * 60 * 1000;
     
-    // 対象メンバーの抽出（5期生以降比較ON ＆ 卒業済みの場合は除外）
+    // メンバーオブジェクト初期化
     state.allMembers.forEach(m => {
-        if (isSince5thGen && m.gradDate) return;
+        // ★【ここを追加】集計の開始日よりも前に卒業しているメンバーは、そもそもリストに入れない
+        if (m.actualEndDate < baseMinDateObj) return;
 
         statsMap[m.name] = { 
             name: m.name, color: m.color || '#ccc',
             total: 0, activeDays: 0, streakMax: 0, currentStreak: 0, highVolumeDays: 0, perfectMonthCount: 0, top3Count: 0,
+            completedTotal: 0,
             streakStart: null, streakEnd: null, maxStreakStart: null, maxStreakEnd: null,
+            currentPerfectStreak: 0, maxPerfectStreak: 0, perfectStreakStart: null, maxPerfectStart: null, maxPerfectEnd: null,
             actualStartDate: m.actualStartDate, endDate: m.actualEndDate, isGraduated: !!m.gradDate, logs: {}
         };
     });
@@ -156,6 +186,9 @@ export const renderRecordPage = () => {
                 s.activeDays++; 
                 if (count >= 10) s.highVolumeDays++; 
             }
+            const [yStr, mStr] = l.date.split('/');
+            const ymNum = parseInt(yStr, 10) * 100 + (parseInt(mStr, 10) - 1);
+            if (ymNum <= compYM) s.completedTotal += count;
         }
     });
 
@@ -167,7 +200,7 @@ export const renderRecordPage = () => {
         const dObj = new Date(dateStr); const dailyRank = [];
         state.allMembers.forEach(m => {
             const s = statsMap[m.name];
-            if (!s) return; // 除外されたメンバーはスキップ
+            if (!s) return; 
             if (dObj < s.actualStartDate || dObj > s.endDate) return; 
             const count = s.logs[dateStr] || 0;
             if (count > 0) dailyRank.push({ name: m.name, count: count });
@@ -179,20 +212,25 @@ export const renderRecordPage = () => {
         }
     });
 
+    // 月順走査フェーズ（皆勤賞）
     let currY = baseMinDateObj.getFullYear(), currM = baseMinDateObj.getMonth();
-    const endY = state.maxDateObj.getFullYear(), endM = state.maxDateObj.getMonth();
     
-    while (currY < endY || (currY === endY && currM <= endM)) {
+    while (currY < compY || (currY === compY && currM <= compM)) {
         const daysInMonth = new Date(currY, currM + 1, 0).getDate();
         const monthStart = new Date(currY, currM, 1);
         const monthEnd = new Date(currY, currM, daysInMonth); monthEnd.setHours(23,59,59);
+        const currentMonthStr = `${currY}年${currM + 1}月`;
 
         state.allMembers.forEach(m => {
             const s = statsMap[m.name];
-            if (!s) return; // 除外されたメンバーはスキップ
+            if (!s) return; 
             
             const calcStart = s.actualStartDate < baseMinDateObj ? baseMinDateObj : s.actualStartDate;
-            if (calcStart > monthEnd || s.endDate < monthStart) return; 
+            
+            if (calcStart > monthEnd || s.endDate < monthStart) {
+                s.currentPerfectStreak = 0;
+                return; 
+            }
             
             let isPerfect = true;
             for (let d = 1; d <= daysInMonth; d++) {
@@ -203,26 +241,46 @@ export const renderRecordPage = () => {
                 const checkDate = formatDateStr(checkDateObj);
                 if (!s.logs[checkDate] || s.logs[checkDate] === 0) { isPerfect = false; break; }
             }
-            if (isPerfect) s.perfectMonthCount++;
+            
+            if (isPerfect) {
+                s.perfectMonthCount++;
+                if (s.currentPerfectStreak === 0) s.perfectStreakStart = currentMonthStr;
+                s.currentPerfectStreak++;
+                
+                if (s.currentPerfectStreak >= s.maxPerfectStreak) {
+                    s.maxPerfectStreak = s.currentPerfectStreak;
+                    s.maxPerfectStart = s.perfectStreakStart;
+                    s.maxPerfectEnd = currentMonthStr;
+                }
+            } else {
+                s.currentPerfectStreak = 0;
+            }
         });
         currM++; if (currM > 11) { currM = 0; currY++; }
     }
 
     state.allMembers.forEach(m => {
         const s = statsMap[m.name];
-        if (!s) return; // 除外されたメンバーはスキップ
+        if (!s) return; 
         
         const calcStart = s.actualStartDate < baseMinDateObj ? baseMinDateObj : s.actualStartDate;
-        
         const stTime = new Date(calcStart.getFullYear(), calcStart.getMonth(), calcStart.getDate()).getTime();
         const edTime = new Date(s.endDate.getFullYear(), s.endDate.getMonth(), s.endDate.getDate()).getTime();
         let diffTime = edTime - stTime; if (diffTime < 0) diffTime = 0;
         
         s.duration = (calcStart > state.maxDateObj || diffTime < 0) ? 0 : Math.round(diffTime / oneDay) + 1; 
-        
+
+        let effEndY = s.endDate.getFullYear();
+        let effEndM = s.endDate.getMonth();
+        if (effEndY * 100 + effEndM > compYM) {
+            effEndY = compY;
+            effEndM = compM;
+        }
         const startY = calcStart.getFullYear(), startM = calcStart.getMonth();
-        const eY = s.endDate.getFullYear(), eM = s.endDate.getMonth();
-        s.durationMonths = (calcStart > state.maxDateObj || diffTime < 0) ? 0 : (eY - startY) * 12 + (eM - startM) + 1;
+        
+        s.completedDurationMonths = (effEndY * 100 + effEndM) >= (startY * 100 + startM) 
+            ? (effEndY - startY) * 12 + (effEndM - startM) + 1 
+            : 0;
 
         let tempStreak = 0, streakStart = null;
         dateStrList.forEach(dateStr => {
@@ -245,13 +303,13 @@ export const renderRecordPage = () => {
     if (type === 'wins') {
         const dailyWins = {}; const dates = new Set();
         filteredLogs.forEach(l => { 
-            if(!statsMap[l.name]) return; // 除外
+            if(!statsMap[l.name]) return;
             if((parseInt(l.count, 10)||0) > 0) dates.add(l.date); 
         });
         Array.from(dates).forEach(date => {
             let maxInDay = 0; const recs = [];
             filteredLogs.forEach(l => { 
-                if(!statsMap[l.name]) return; // 除外
+                if(!statsMap[l.name]) return; 
                 if(l.date === date) { const c=parseInt(l.count, 10)||0; if(c>maxInDay) maxInDay=c; recs.push({name:l.name, count:c}); }
             });
             if(maxInDay>0) { recs.forEach(r => { if(r.count===maxInDay) dailyWins[r.name]=(dailyWins[r.name]||0)+1; }); }
@@ -266,7 +324,7 @@ export const renderRecordPage = () => {
         });
     } else if (type === 'daily_max') {
         dataList = filteredLogs
-            .filter(l => statsMap[l.name]) // 除外
+            .filter(l => statsMap[l.name]) 
             .map(l => ({ date: l.date, name: l.name, count: parseInt(l.count, 10)||0, color: state.memberMap[l.name]?.color||'#ccc' }))
             .filter(r => r.count>0).sort((a,b)=>b.count-a.count).slice(0, 30);
         if(dataList.length) maxVal = dataList[0].count;
@@ -279,8 +337,12 @@ export const renderRecordPage = () => {
     } else if (type === 'monthly_max') {
         const monthlyData = {};
         filteredLogs.forEach(l => {
-            if(!statsMap[l.name]) return; // 除外
-            const ym = l.date.split('/').slice(0,2).join('/');
+            if(!statsMap[l.name]) return; 
+            const [yStr, mStr] = l.date.split('/');
+            const ymNum = parseInt(yStr, 10) * 100 + (parseInt(mStr, 10) - 1);
+            if (ymNum > compYM) return; 
+            
+            const ym = `${yStr}/${mStr}`;
             monthlyData[ym + '_' + l.name] = (monthlyData[ym + '_' + l.name]||0) + (parseInt(l.count, 10)||0);
         });
         dataList = Object.keys(monthlyData).map(k => {
@@ -296,8 +358,12 @@ export const renderRecordPage = () => {
     } else if (type === 'monthly_wins') {
         const monthlyWins = {}; const monthlyTotals = {};
         filteredLogs.forEach(l => {
-            if(!statsMap[l.name]) return; // 除外
-            const ym = l.date.split('/').slice(0,2).join('/');
+            if(!statsMap[l.name]) return; 
+            const [yStr, mStr] = l.date.split('/');
+            const ymNum = parseInt(yStr, 10) * 100 + (parseInt(mStr, 10) - 1);
+            if (ymNum > compYM) return; 
+
+            const ym = `${yStr}/${mStr}`;
             if (!monthlyTotals[ym]) monthlyTotals[ym] = {};
             monthlyTotals[ym][l.name] = (monthlyTotals[ym][l.name] || 0) + (parseInt(l.count, 10) || 0);
         });
@@ -321,7 +387,13 @@ export const renderRecordPage = () => {
         if (type === 'total') { dataList = Object.values(statsMap).sort((a,b) => b.total - a.total); maxVal = dataList[0]?.total || 0; unit=""; } 
         else if (type === 'streak') { dataList = Object.values(statsMap).filter(s => s.streakMax > 0).sort((a,b) => b.streakMax - a.streakMax); maxVal = dataList[0]?.streakMax || 0; unit="日"; } 
         else if (type === 'average_daily') { dataList = Object.values(statsMap).map(s => { s.avg = s.duration>0?s.total/s.duration:0; return s; }).sort((a,b) => b.avg - a.avg); maxVal = dataList[0]?.avg || 0; unit=""; isDecimal=true; } 
-        else if (type === 'average_monthly') { dataList = Object.values(statsMap).map(s => { s.avg = s.durationMonths>0?s.total/s.durationMonths:0; return s; }).sort((a,b) => b.avg - a.avg); maxVal = dataList[0]?.avg || 0; unit=""; isDecimal=true; } 
+        else if (type === 'average_monthly') { 
+            dataList = Object.values(statsMap).map(s => { 
+                s.avg = s.completedDurationMonths > 0 ? s.completedTotal / s.completedDurationMonths : 0; 
+                return s; 
+            }).sort((a,b) => b.avg - a.avg); 
+            maxVal = dataList[0]?.avg || 0; unit=""; isDecimal=true; 
+        } 
         else if (type === 'active_rate') { dataList = Object.values(statsMap).map(s => { s.rate = s.duration>0?(s.activeDays/s.duration)*100:0; return s; }).sort((a,b) => b.rate - a.rate); maxVal = 100; unit="%"; isDecimal=true; } 
         else if (type === 'high_volume') { dataList = Object.values(statsMap).sort((a,b) => b.highVolumeDays - a.highVolumeDays); maxVal = dataList[0]?.highVolumeDays || 0; unit="回"; } 
         else if (type === 'perfect_months') { dataList = Object.values(statsMap).filter(s => s.perfectMonthCount > 0).sort((a,b) => b.perfectMonthCount - a.perfectMonthCount); maxVal = dataList[0]?.perfectMonthCount || 0; unit="ヶ月"; } 
@@ -335,12 +407,25 @@ export const renderRecordPage = () => {
             if (i > 0) { let prevVal = dataList[i-1][targetKey] || 0; if (val < prevVal) rank = i + 1; }
             const rc = rank <= 3 ? `rank-${rank}` : ''; const w = (maxVal > 0) ? (val / maxVal) * 100 : 0; 
             const valStr = isDecimal ? val.toFixed((type==='average_daily'||type==='average_monthly')?1:1) : val.toLocaleString();
+            
             let subHtml = "";
-            if(type === 'streak' && r.maxStreakStart && r.maxStreakEnd) {
+            if (type === 'streak' && r.maxStreakStart && r.maxStreakEnd) {
                 const isUpdating = (r.maxStreakEnd === state.latestValidDateStr && !r.isGraduated);
-                subHtml = `<div style="font-size:10px;color:#888;">${r.maxStreakStart} - ${r.maxStreakEnd}${isUpdating ? ' <span class="updating-badge">🔥更新中</span>' : ''}</div>`;
+                subHtml = `<div style="font-size:10px; color:#888; font-weight:normal; line-height:1.4; margin-top:2px;">${r.maxStreakStart} -<br>${r.maxStreakEnd}${isUpdating ? ' <span class="updating-badge">🔥更新中</span>' : ''}</div>`;
+            } else if (type === 'perfect_months' && r.maxPerfectStart && r.maxPerfectEnd) {
+                const isUpdating = (r.maxPerfectEnd === `${compY}年${compM + 1}月` && !r.isGraduated);
+                subHtml = `<div style="font-size:10px; color:#888; font-weight:normal; line-height:1.4; margin-top:2px;">${r.maxPerfectStart} -<br>${r.maxPerfectEnd}${isUpdating ? ' <span class="updating-badge">🔥更新中</span>' : ''}</div>`;
             }
-            html += `<tr onclick="window.openModal('${r.name}', 'all:all')"><td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td><td style="width:140px;font-weight:bold">${r.name}${subHtml}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt" style="width:60px">${valStr}${unit}</div></div></td></tr>`;
+            
+            html += `
+            <tr onclick="window.openModal('${r.name}', 'all:all')">
+                <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
+                <td style="width:140px;">
+                    <div style="font-weight:bold; line-height:1.2;">${r.name}</div>
+                    ${subHtml}
+                </td>
+                <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="bar-txt" style="width:60px">${valStr}${unit}</div></div></td>
+            </tr>`;
         });
     }
     area.innerHTML = html + '</tbody></table>';

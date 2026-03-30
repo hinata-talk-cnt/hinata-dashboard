@@ -53,7 +53,12 @@
     <div class="loading-text">データを読み込んでいます...</div>
 </div>
 
-<div class="mobile-warning">⚠️ 当サイトはPC環境での閲覧を推奨しています</div>
+<div class="mobile-warning" id="mobileWarningBanner" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+    <span id="warningText">⚠️ 当サイトはPC環境での閲覧を推奨しています</span>
+    <button id="toggleViewBtn" style="padding: 4px 10px; background: #fff; color: #ff9800; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+        💻 PC表示
+    </button>
+</div>
 
 <header class="mobile-header">
     <button id="hamburgerBtn" class="hamburger-btn" aria-label="メニュー">
@@ -72,10 +77,13 @@
         <section class="card">
             <div class="card-header">ℹ️ Information</div>
             <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
+                <p style="border: none; padding-bottom: 0; margin-bottom: 5px;">
+                    当サイトの集計データは<br>以下の期間となっております。
+                </p>
+                <p class="target-date-range" style="margin-top: 0;">
+                    <i class="far fa-calendar-alt"></i><span id="info-end-date">----/--/--</span>
+                </p>
                 <p style="margin-bottom:15px;">
-                    当サイトの集計データは<br>
-                    <b>2023年11月以降</b><br>
-                    となっております。<br>
                     <span style="font-size:11px; color:#666; display:block; margin-top:6px; line-height:1.4;">(五期生のみ完全なデータ)</span>
                 </p>
                 <p style="margin-bottom:15px; color:#888; font-size:11px;">
@@ -176,6 +184,8 @@
                             五期生開始以降で比較
                         </label>
                     </div>
+
+                    <div id="recordPeriodInfo" style="width: 100%; text-align: right; font-size: 11px; color: #888; margin-top: 5px; margin-bottom: 0px; padding-right: 5px; font-weight: bold; letter-spacing: 0.5px;"></div>
                 </div>
                 <div id="recordContentArea"></div>
             </div>
