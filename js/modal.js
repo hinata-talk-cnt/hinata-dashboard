@@ -235,6 +235,55 @@ export const updateModalContent = () => {
         document.getElementById('mAvgBox1').style.display = "block"; 
         document.getElementById('mAvgBox2').style.display = "block";
 
+        // --- ★ 月間平均の計算（未完了の進行月を除外する処理） ---
+        const maxD = state.maxDateObj;
+        const isEndOfMonth = new Date(maxD.getFullYear(), maxD.getMonth() + 1, 0).getDate() === maxD.getDate();
+        let compY = maxD.getFullYear();
+        let compM = maxD.getMonth() + 1;
+        if (!isEndOfMonth) {
+            compM--;
+            if (compM < 1) { compM = 12; compY--; }
+        }
+        const compYMStr = `${compY}/${String(compM).padStart(2, '0')}`;
+
+        let completedSum = 0;
+        let completedCount = 0;
+        let hasOngoingMonth = false;
+
+        Array.from(mSum.keys()).forEach(ym => {
+            if (ym <= compYMStr) {
+                completedSum += mSum.get(ym); // 完了した月の合計だけを足す
+                completedCount++;
+            } else {
+                hasOngoingMonth = true; // 進行中の月が含まれているフラグ
+            }
+        });
+
+        let avg1Html = "";
+        if (completedCount > 0) {
+            let val = (completedSum / completedCount).toFixed(1);
+            if (hasOngoingMonth) {
+                // divで強制的に縦並びにする（CSSに負けない設定）
+                avg1Html = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2;">
+                                <span>${val}</span>
+                                <span style="font-size:10px; color:#888; font-weight:normal; white-space:nowrap; margin-top:2px;">※進行中の当月は除外</span>
+                            </div>`;
+            } else {
+                avg1Html = val;
+            }
+        } else {
+            let val = bars.length ? (sum / bars.length).toFixed(1) : "0.0";
+            if (hasOngoingMonth) {
+                avg1Html = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2;">
+                                <span>${val}</span>
+                                <span style="font-size:10px; color:#888; font-weight:normal; white-space:nowrap; margin-top:2px;">※進行中の当月を含む</span>
+                            </div>`;
+            } else {
+                avg1Html = val;
+            }
+        }
+        // ---------------------------------------------------------
+
         // 平均値計算用の厳密なアクティブ日数を算出（加入から卒業、または現在まで）
         let pStart = state.minDateObj, pEnd = state.maxDateObj;
         if (type === 'year') { pStart = new Date(value, 0, 1); pEnd = new Date(value, 11, 31); } 
@@ -254,7 +303,10 @@ export const updateModalContent = () => {
 
         document.getElementById('mTotal').innerText = sum.toLocaleString(); 
         document.getElementById('mMax').innerText = max.toLocaleString();
-        document.getElementById('mAvg1').innerText = bars.length ? (sum / bars.length).toFixed(1) : 0.0;
+        
+        // .innerHTML を使って注釈タグごと流し込む
+        document.getElementById('mAvg1').innerHTML = avg1Html;
+        
         document.getElementById('mAvg2').innerText = (sum / activeDaysInPeriod).toFixed(1);
     }
     

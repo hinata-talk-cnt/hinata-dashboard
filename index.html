@@ -74,17 +74,33 @@
     <aside class="sidebar" id="sidebar">
         <button id="closeSidebarBtn" class="close-sidebar-btn" aria-label="閉じる">×</button>
         
-        <section class="card">
+    <section class="card">
             <div class="card-header">ℹ️ Information</div>
-            <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
-                <p style="border: none; padding-bottom: 0; margin-bottom: 5px;">
+            <div style="padding: 20px 15px; text-align: center; color: #444; line-height: 1.6;">
+                
+                <p style="border: none; padding-bottom: 0; margin-bottom: 5px; font-size: 13px;">
                     当サイトの集計データは<br>以下の期間となっております。<br>
-                    2023/11/01～<br>
-                    ※五期生のみ完全なデータ<br>
+                    <span style="font-size:16px; font-weight:bold; color:#4ea5d9; display:inline-block; margin-top:5px;">2023/11/01 ～ <span id="latestDateDisplay"></span></span>
                 </p>
-                <p style="margin-bottom:15px; color:#888; font-size:11px;">
+                
+                <p style="margin-bottom: 15px; color: #888; font-size: 11px;">
                     PC環境での閲覧を推奨します。
                 </p>
+
+                <div style="display: flex; justify-content: center;">
+                    <a href="https://x.com/intent/tweet?text=日向坂46%20メッセージ集計ダッシュボード%0A&url=http://hinata-talk-cnt.com/&hashtags=日向坂46メッセージ" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style="display: inline-flex; align-items: center; gap: 8px; background-color: #000; color: #fff; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold; transition: opacity 0.2s;"
+                    onmouseover="this.style.opacity='0.8'" 
+                    onmouseout="this.style.opacity='1'">
+                        <svg viewBox="0 0 1200 1227" width="14" height="14" fill="currentColor">
+                            <path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"></path>
+                        </svg>
+                        Xでシェア
+                    </a>
+                </div>
+
             </div>
         </section>
 

@@ -203,6 +203,15 @@ function initApp() {
     
     // メンバータブのアイコン一覧も初期描画しておく
     renderMemberCatalog();
+
+    const latestDateDisplay = document.getElementById('latestDateDisplay');
+    if (latestDateDisplay && state.maxDateObj) {
+        const d = state.maxDateObj;
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        latestDateDisplay.innerText = `${yyyy}/${mm}/${dd}`;
+    }
 }
 
 /**
