@@ -107,7 +107,7 @@ export const renderRecordPage = () => {
     let html = '<table class="ranking-table"><tbody>';
     let dataList = []; let maxVal = 0;
     
-    // --------------------------------------------------
+// --------------------------------------------------
     // ★ 基準日の決定（5期生以降フィルター処理）
     // --------------------------------------------------
     let baseMinDateObj = state.minDateObj;
@@ -119,6 +119,8 @@ export const renderRecordPage = () => {
             baseMinDateObj = new Date('2023/11/01'); 
         }
     }
+    
+    baseMinDateObj = new Date(baseMinDateObj.getFullYear(), baseMinDateObj.getMonth(), baseMinDateObj.getDate());
 
     // --------------------------------------------------
     // ★ 完了月の算出
@@ -142,10 +144,10 @@ export const renderRecordPage = () => {
     let periodText = "";
     
     if (isMonthlyRecord) {
-        periodText = `📅 集計対象: ${sY}年${sM}月 ～ ${compY}年${compM + 1}月`;
+        periodText = `📅 対象期間: ${sY}年${sM}月 ～ ${compY}年${compM + 1}月`;
         if (!isEndOfMonth) periodText += ` (※${eM}月は進行中のため除外)`;
     } else {
-        periodText = `📅 集計対象: ${sY}/${String(sM).padStart(2,'0')}/${String(sD).padStart(2,'0')} ～ ${eY}/${String(eM).padStart(2,'0')}/${String(eD).padStart(2,'0')}`;
+        periodText = `📅 対象期間: ${sY}/${String(sM).padStart(2,'0')}/${String(sD).padStart(2,'0')} ～ ${eY}/${String(eM).padStart(2,'0')}/${String(eD).padStart(2,'0')}`;
     }
 
     const latestDateStr = periodText;
@@ -212,36 +214,63 @@ export const renderRecordPage = () => {
         }
     });
 
+    // --------------------------------------------------
+    // ★ 安全な日付キー（YYYYMMDD）でログを照合するためのマップを作成
+    // （ゼロ埋め等の文字列フォーマット不一致バグを完全に防ぐため）
+    // --------------------------------------------------
+    const safeLogsMap = {};
+    filteredLogs.forEach(l => {
+        const parts = l.date.split('/');
+        if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            const key = y * 10000 + m * 100 + d; // 例: 20230405
+            if (!safeLogsMap[l.name]) safeLogsMap[l.name] = new Set();
+            if ((parseInt(l.count, 10) || 0) > 0) safeLogsMap[l.name].add(key);
+        }
+    });
+
     // 月順走査フェーズ（皆勤賞）
     let currY = baseMinDateObj.getFullYear(), currM = baseMinDateObj.getMonth();
     
     while (currY < compY || (currY === compY && currM <= compM)) {
         const daysInMonth = new Date(currY, currM + 1, 0).getDate();
         const monthStart = new Date(currY, currM, 1);
-        const monthEnd = new Date(currY, currM, daysInMonth); monthEnd.setHours(23,59,59);
+        const monthEnd = new Date(currY, currM, daysInMonth); monthEnd.setHours(23,59,59,999);
         const currentMonthStr = `${currY}年${currM + 1}月`;
 
         state.allMembers.forEach(m => {
             const s = statsMap[m.name];
             if (!s) return; 
             
-            const calcStart = s.actualStartDate < baseMinDateObj ? baseMinDateObj : s.actualStartDate;
+            const calcStartRaw = s.actualStartDate < baseMinDateObj ? baseMinDateObj : s.actualStartDate;
+            const calcStart = new Date(calcStartRaw.getFullYear(), calcStartRaw.getMonth(), calcStartRaw.getDate());
+            const calcEnd = new Date(s.endDate.getFullYear(), s.endDate.getMonth(), s.endDate.getDate());
+            calcEnd.setHours(23,59,59,999);
             
-            if (calcStart > monthEnd || s.endDate < monthStart) {
+            // ★修正ポイント: その月を「丸々1ヶ月」カバーしているか（途中加入や途中卒業は皆勤賞の対象外）
+            const isActiveFullMonth = (calcStart <= monthStart) && (calcEnd >= monthEnd);
+
+            if (!isActiveFullMonth) {
                 s.currentPerfectStreak = 0;
-                return; 
+                return; // 丸1ヶ月に満たない月はスキップ
             }
             
             let isPerfect = true;
+            const memberLogSet = safeLogsMap[m.name] || new Set();
+
             for (let d = 1; d <= daysInMonth; d++) {
-                const checkDateObj = new Date(currY, currM, d);
-                if (checkDateObj < calcStart || checkDateObj > s.endDate) {
-                    isPerfect = false; break;
+                const checkKey = currY * 10000 + (currM + 1) * 100 + d;
+                
+                // ★修正ポイント: 安全な数値キーで照合。1日でも記録がない日があれば皆勤失敗
+                if (!memberLogSet.has(checkKey)) { 
+                    isPerfect = false; 
+                    break; 
                 }
-                const checkDate = formatDateStr(checkDateObj);
-                if (!s.logs[checkDate] || s.logs[checkDate] === 0) { isPerfect = false; break; }
             }
             
+            // 丸1ヶ月在籍し、かつ全ての日で送信していれば皆勤賞達成
             if (isPerfect) {
                 s.perfectMonthCount++;
                 if (s.currentPerfectStreak === 0) s.perfectStreakStart = currentMonthStr;
@@ -396,10 +425,32 @@ export const renderRecordPage = () => {
         } 
         else if (type === 'active_rate') { dataList = Object.values(statsMap).map(s => { s.rate = s.duration>0?(s.activeDays/s.duration)*100:0; return s; }).sort((a,b) => b.rate - a.rate); maxVal = 100; unit="%"; isDecimal=true; } 
         else if (type === 'high_volume') { dataList = Object.values(statsMap).sort((a,b) => b.highVolumeDays - a.highVolumeDays); maxVal = dataList[0]?.highVolumeDays || 0; unit="回"; } 
-        else if (type === 'perfect_months') { dataList = Object.values(statsMap).filter(s => s.perfectMonthCount > 0).sort((a,b) => b.perfectMonthCount - a.perfectMonthCount); maxVal = dataList[0]?.perfectMonthCount || 0; unit="ヶ月"; } 
-        else if (type === 'top3') { dataList = Object.values(statsMap).sort((a,b) => b.top3Count - a.top3Count); maxVal = dataList[0]?.top3Count || 0; unit="回"; }
+        else if (type === 'perfect_months') { 
+            // ★変更点：通算(perfectMonthCount)ではなく、最大連続月数(maxPerfectStreak)で絞り込み・並び替えを行う
+            dataList = Object.values(statsMap)
+                .filter(s => s.maxPerfectStreak > 0)
+                .sort((a,b) => b.maxPerfectStreak - a.maxPerfectStreak); 
+            maxVal = dataList[0]?.maxPerfectStreak || 0; 
+            unit="ヶ月"; 
+        } 
+        else if (type === 'top3') { 
+            dataList = Object.values(statsMap).sort((a,b) => b.top3Count - a.top3Count); 
+            maxVal = dataList[0]?.top3Count || 0; 
+            unit="回"; 
+        }
 
-        const statKeyMap = { 'total':'total', 'streak':'streakMax', 'average_daily':'avg', 'average_monthly':'avg', 'active_rate':'rate', 'high_volume':'highVolumeDays', 'perfect_months':'perfectMonthCount', 'top3':'top3Count' };
+        // ★変更点：'perfect_months' がグラフ描画時に参照する値を 'maxPerfectStreak' に変更する
+        const statKeyMap = { 
+            'total':'total', 
+            'streak':'streakMax', 
+            'average_daily':'avg', 
+            'average_monthly':'avg', 
+            'active_rate':'rate', 
+            'high_volume':'highVolumeDays', 
+            'perfect_months':'maxPerfectStreak',  // ← ここが重要
+            'top3':'top3Count' 
+        };
+
         let rank = 1;
         dataList.forEach((r, i) => {
             if (r.duration === 0) return;

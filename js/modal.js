@@ -266,7 +266,7 @@ export const updateModalContent = () => {
                 // divで強制的に縦並びにする（CSSに負けない設定）
                 avg1Html = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.2;">
                                 <span>${val}</span>
-                                <span style="font-size:10px; color:#888; font-weight:normal; white-space:nowrap; margin-top:2px;">※進行中の当月は除外</span>
+                                <span style="font-size:10px; color:#888; font-weight:normal; white-space:nowrap; margin-top:2px;">※当月は算出外</span>
                             </div>`;
             } else {
                 avg1Html = val;
@@ -375,4 +375,24 @@ export const closeModal = () => {
     document.getElementById('modalOverlay').style.display = 'none'; 
     document.getElementById('modal').style.display = 'none'; 
     document.getElementById('dailyModal').style.display = 'none'; 
+};
+
+/**
+ * モーダル内の期間プルダウンを前後に切り替える関数
+ * @param {number} direction - 1: 古い期間(リストの下)へ, -1: 新しい期間(リストの上)へ
+ */
+export const shiftModalPeriod = (direction) => {
+    const select = document.getElementById('modalPeriodSelector');
+    let newIndex = select.selectedIndex + direction;
+    
+    // disabledな選択肢（「--- 2024年 記録 ---」などの見出し部分）はスキップ
+    while (newIndex >= 0 && newIndex < select.options.length && select.options[newIndex].disabled) {
+        newIndex += direction;
+    }
+    
+    // リストの範囲内であれば選択を変更してグラフを更新する
+    if (newIndex >= 0 && newIndex < select.options.length) {
+        select.selectedIndex = newIndex;
+        updateModalContent();
+    }
 };

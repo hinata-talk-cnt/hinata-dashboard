@@ -84,7 +84,7 @@
                 </p>
                 
                 <p style="margin-bottom: 15px; color: #888; font-size: 11px;">
-                    PC環境での閲覧を推奨します。
+                    ※PC環境での閲覧を推奨します。
                 </p>
 
                 <div style="display: flex; justify-content: center;">
@@ -103,6 +103,15 @@
 
             </div>
         </section>
+        
+        <section class="card">
+            <div class="card-header">Developer</div>
+            <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
+                    <a href="https://x.com/hinata_talk_cnt" target="_blank" style="text-decoration:none; color:var(--twitter-blue); font-weight:bold; font-size:14px; display:inline-flex; align-items:center; gap:4px;">
+                        <span>𝕏</span> @hinata_talk_cnt
+                    </a>
+            </div>
+        </section>
 
         <section class="card">
             <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" style="font-size:12px; color:#888;"></span></div>
@@ -119,16 +128,7 @@
         </section>
         
         <section class="card"><div class="card-header">📂 月別</div><ul class="archive-list" id="archiveList"></ul></section>
-        <section class="card"><div class="card-header">📂 期間</div><ul class="archive-list" id="periodList"></ul></section>
-        
-        <section class="card">
-            <div class="card-header">Developer</div>
-            <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
-                    <a href="https://x.com/hinata_talk_cnt" target="_blank" style="text-decoration:none; color:var(--twitter-blue); font-weight:bold; font-size:14px; display:inline-flex; align-items:center; gap:4px;">
-                        <span>𝕏</span> @hinata_talk_cnt
-                    </a>
-            </div>
-        </section>
+        <section class="card"><div class="card-header">📂 期間別</div><ul class="archive-list" id="periodList"></ul></section>
     </aside>
 
     <main class="main-content" id="mainContentScroll">
@@ -217,14 +217,19 @@
             </div>
             <button class="nav-arrow" id="btnModalNext" aria-label="次のメンバー">▶</button>
         </div>
-        <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end; margin-top:10px;">
-            <select id="modalPeriodSelector" style="min-width:200px;" aria-label="期間選択"></select>
-            <button class="close-btn" onclick="window.closeModal()" aria-label="閉じる">×</button>
+        <div style="display:flex; align-items:center; gap:6px; justify-content:flex-end; margin-top:10px;">
+            <button class="title-nav-btn" onclick="window.shiftModalPeriod(1)" aria-label="前の期間" style="padding: 4px 10px; font-size:12px; border-radius: 4px;">◀</button>
+            
+            <select id="modalPeriodSelector" style="min-width:160px; margin: 0;" aria-label="期間選択"></select>
+            
+            <button class="title-nav-btn" onclick="window.shiftModalPeriod(-1)" aria-label="次の期間" style="padding: 4px 10px; font-size:12px; border-radius: 4px;">▶</button>
+            
+            <button class="close-btn" onclick="window.closeModal()" aria-label="閉じる" style="margin-left: 4px;">×</button>
         </div>
     </div>
     <div class="stats-row" id="modalStatsRow" style="margin-bottom:0; grid-template-columns: repeat(4, 1fr);">
         <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;">
-            <span class="stat-label">期間合計</span>
+            <span class="stat-label">合計</span>
             <span class="stat-val" id="mTotal" style="font-size:20px;">-</span>
         </div>
         <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;">

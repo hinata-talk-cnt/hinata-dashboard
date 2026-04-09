@@ -1,7 +1,8 @@
 import { state, genKanji, isDateInPeriod, formatDateStr } from './store.js';
 import { renderCalendarWidget, shiftCal } from './calendar.js';
 import { renderRankingView, renderMemberCatalog, renderRecordPage } from './views.js';
-import { openModal, closeModal, openMonthlyRankingModal, openDailyRankingModal, updateModalContent } from './modal.js';
+import { openModal, closeModal, openMonthlyRankingModal, openDailyRankingModal, updateModalContent, shiftModalPeriod } from './modal.js';
+
 
 // キャッシュバスティング用：ファイルの読み込み時に常に最新のデータを取得するためのタイムスタンプ
 const DATA_VER = new Date().getTime();
@@ -523,3 +524,4 @@ window.closeModal = closeModal;
 window.openMonthlyRankingModal = openMonthlyRankingModal;
 window.openDailyRankingModal = openDailyRankingModal;
 window.selectPeriod = selectPeriod;
+window.shiftModalPeriod = shiftModalPeriod;
