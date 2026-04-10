@@ -54,7 +54,7 @@
 </div>
 
 <div class="mobile-warning" id="mobileWarningBanner" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-    <span id="warningText">⚠️ 当サイトはPC環境での閲覧を推奨しています</span>
+    <span id="warningText">⚠️ 当サイトはPC環境での閲覧を推奨しています。</span>
     <button id="toggleViewBtn" style="padding: 4px 10px; background: #fff; color: #ff9800; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
         💻 PC表示
     </button>
@@ -64,7 +64,7 @@
     <button id="hamburgerBtn" class="hamburger-btn" aria-label="メニュー">
         <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
-    <div class="mobile-header-title">📊 日向坂46メッセージ</div>
+    <div class="mobile-header-title">📊 日向坂46メッセージ集計</div>
 </header>
 
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -74,17 +74,21 @@
     <aside class="sidebar" id="sidebar">
         <button id="closeSidebarBtn" class="close-sidebar-btn" aria-label="閉じる">×</button>
         
-    <section class="card">
+        <section class="card">
             <div class="card-header">ℹ️ Information</div>
             <div style="padding: 20px 15px; text-align: center; color: #444; line-height: 1.6;">
                 
+                <div style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 8px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 15px; line-height: 1.4;">
+                    🚧 テスト運用中（仮公開）<br>
+                    <span style="font-size: 11px; font-weight: normal;">不具合が発生する場合があります。</span>
+                </div>
                 <p style="border: none; padding-bottom: 0; margin-bottom: 5px; font-size: 13px;">
                     当サイトの集計データは<br>以下の期間となっております。<br>
                     <span style="font-size:16px; font-weight:bold; color:#4ea5d9; display:inline-block; margin-top:5px;">2023/11/01 ～ <span id="latestDateDisplay"></span></span>
                 </p>
                 
                 <p style="margin-bottom: 15px; color: #888; font-size: 11px;">
-                    ※PC環境での閲覧を推奨します。
+                    ※PC環境での閲覧を推奨
                 </p>
 
                 <div style="display: flex; justify-content: center;">
@@ -171,21 +175,21 @@
                 <div class="controls-bar" style="flex-direction: row; flex-wrap: wrap; gap: 10px;">
                     <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px; flex: 1; min-width: 200px;" aria-label="記録の種類">
                         <optgroup label="▼ 日次記録 (Daily)">
-                            <option value="daily_max">👑 最多送信数</option>
-                            <option value="wins">🥇 1位獲得回数</option>
+                            <option value="daily_max">👑 送信件数</option>
+                            <option value="wins">🥇 1位回数</option>
                             <option value="top3">🥉 Top3回数</option>
-                            <option value="streak">🚀 連続送信日数</option>
+                            <option value="streak">📅 連続送信日数</option>
                             <option value="high_volume">💌 2桁送信回数</option>
-                            <option value="average_daily">📊 1日平均送信数</option>
+                            <option value="average_daily">📊 平均送信数</option>
                         </optgroup>
                         <optgroup label="▼ 月間記録 (Monthly)">
-                            <option value="monthly_max">👑 最多送信数</option>
-                            <option value="monthly_wins">🥇 1位獲得回数</option>
-                            <option value="perfect_months">📅 皆勤賞数</option>
-                            <option value="average_monthly">📊 月間平均送信数</option>
+                            <option value="monthly_max">👑 送信件数</option>
+                            <option value="monthly_wins">🥇 1位回数</option>
+                            <option value="perfect_months">📅 連続送信月数</option>
+                            <option value="average_monthly">📊 平均送信数</option>
                         </optgroup>
                         <optgroup label="▼ 通算記録 (Total)">
-                            <option value="total">👑 最多送信数</option>
+                            <option value="total">👑 送信件数</option>
                             <option value="active_rate">📈 アクティブ率</option>
                         </optgroup>
                     </select>

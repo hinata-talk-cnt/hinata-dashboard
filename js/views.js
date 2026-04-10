@@ -159,7 +159,29 @@ export const renderRecordPage = () => {
     }
     
     const infoEl = document.getElementById('recordPeriodInfo');
-    if (infoEl) infoEl.innerText = periodText;
+    if (infoEl) {
+        // すでに存在する箱（infoEl）を左右分割レイアウトに変更
+        infoEl.style.display = 'flex';
+        infoEl.style.justifyContent = 'space-between';
+        infoEl.style.alignItems = 'center';
+        
+        let modeHtml = "";
+        // 通算記録 (Total)
+        if (['total', 'active_rate'].includes(type)) {
+            modeHtml = "<span style='color:#FF9F43;'>通算記録</span>";
+            
+        // 月間記録 (Monthly)
+        } else if (['monthly_max', 'monthly_wins', 'average_monthly', 'perfect_months'].includes(type)) {
+            modeHtml = "<span style='color:#28c76f;'>月間記録</span>";
+            
+        // 日次記録 (Daily) ※上記以外
+        } else {
+            modeHtml = "<span style='color:#4b89dc;'>日次記録</span>";
+        }
+
+        // 左側に集計単位、右側に元からある日付（periodText）を入れる
+        infoEl.innerHTML = `<span>${modeHtml}</span><span>${periodText}</span>`;
+    }
 
     const filteredLogs = state.allLogs.filter(l => new Date(l.date) >= baseMinDateObj);
     const statsMap = {}; const oneDay = 24 * 60 * 60 * 1000;
