@@ -2,47 +2,64 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日向坂46メッセージ集計</title>
 
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4b89dc">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="icon" href="icon-192.png" type="image/png">
+    
+    <meta property="og:title" content="日向坂46メッセージ集計">
+    <meta property="og:description" content="日向坂46メンバーのメッセージ送信数を可視化・分析するダッシュボードです。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="日向坂集計">
+    <meta property="og:url" content="https://hinata-talk-cnt.com/"> 
+    <meta property="og:image" content="https://hinata-talk-cnt.com/og-image.png"> 
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="日向坂46メッセージ集計">
+    <meta name="twitter:description" content="日向坂46メンバーのメッセージ送信数を可視化・分析するダッシュボードです。">
+    <meta name="twitter:image" content="https://hinata-talk-cnt.com/og-image.png">
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZYQHLZR55J"></script>
     <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-ZYQHLZR55J');
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-ZYQHLZR55J');
     </script>
 
     <meta property="og:title" content="日向坂46メッセージ集計">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     
     <style>
-        body { margin: 0; }
+        body { margin: 0; background-color: #f4f7f6; }
+        
+        /* 画面全体を覆う白いマスクを最速で描画し、背後の崩れたレイアウトを隠す */
         #loadingMask {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed; inset: 0;
             background: #fff; z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 0.5s;
         }
         .spinner {
-            width: 50px; height: 50px;
+            width: 50px; height: 50px; margin-bottom: 20px;
             border: 5px solid #f3f3f3; border-top: 5px solid #4b89dc; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+            animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { font-weight: bold; color: #666; letter-spacing: 1px; font-family: sans-serif; }
     </style>
-
     <script>
         const ver = new Date().getTime();
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'style.css?v=' + ver;
+        link.href = `style.css?v=${ver}`;
         document.head.appendChild(link);
     </script>
 </head>
@@ -53,16 +70,16 @@
     <div class="loading-text">データを読み込んでいます...</div>
 </div>
 
-<div class="mobile-warning" id="mobileWarningBanner" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+<div class="mobile-warning mobile-warning-banner" id="mobileWarningBanner">
     <span id="warningText">⚠️ 当サイトはPC環境での閲覧を推奨しています。</span>
-    <button id="toggleViewBtn" style="padding: 4px 10px; background: #fff; color: #ff9800; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
-        💻 PC表示
-    </button>
+    <button type="button" id="toggleViewBtn" class="btn-pc-view">💻 PC表示</button>
 </div>
 
 <header class="mobile-header">
-    <button id="hamburgerBtn" class="hamburger-btn" aria-label="メニュー">
-        <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    <button type="button" id="hamburgerBtn" class="hamburger-btn" aria-label="メニュー">
+        <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
     </button>
     <div class="mobile-header-title">📊 日向坂46メッセージ集計</div>
 </header>
@@ -72,61 +89,54 @@
 <div class="container">
     
     <aside class="sidebar" id="sidebar">
-        <button id="closeSidebarBtn" class="close-sidebar-btn" aria-label="閉じる">×</button>
+        <button type="button" id="closeSidebarBtn" class="close-sidebar-btn" aria-label="閉じる">×</button>
         
         <section class="card">
             <div class="card-header">ℹ️ Information</div>
-            <div style="padding: 20px 15px; text-align: center; color: #444; line-height: 1.6;">
-                
-                <div style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 8px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 15px; line-height: 1.4;">
+            <div class="info-content">
+                <div class="info-alert">
                     🚧 テスト運用中（仮公開）<br>
-                    <span style="font-size: 11px; font-weight: normal;">不具合が発生する場合があります。</span>
+                    <span>不具合が発生する場合があります。</span>
                 </div>
-                <p style="border: none; padding-bottom: 0; margin-bottom: 5px; font-size: 13px;">
+                <p class="info-date-wrap">
                     当サイトの集計データは<br>以下の期間となっております。<br>
-                    <span style="font-size:16px; font-weight:bold; color:#4ea5d9; display:inline-block; margin-top:5px;">2023/11/01 ～ <span id="latestDateDisplay"></span></span>
+                    <span class="info-date-highlight">2023/11/01 ～ <span id="latestDateDisplay"></span></span>
                 </p>
-                
-                <p style="margin-bottom: 15px; color: #888; font-size: 11px;">
-                    ※PC環境での閲覧を推奨
-                </p>
+                <p class="info-note">※PC環境での閲覧を推奨</p>
 
-                <div style="display: flex; justify-content: center;">
-                    <a href="https://x.com/intent/tweet?text=日向坂46%20メッセージ集計ダッシュボード%0A&url=http://hinata-talk-cnt.com/&hashtags=日向坂46メッセージ" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    style="display: inline-flex; align-items: center; gap: 8px; background-color: #000; color: #fff; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold; transition: opacity 0.2s;"
-                    onmouseover="this.style.opacity='0.8'" 
-                    onmouseout="this.style.opacity='1'">
-                        <svg viewBox="0 0 1200 1227" width="14" height="14" fill="currentColor">
+                <div class="share-btn-wrap">
+                    <a href="https://x.com/intent/tweet?text=日向坂46%20メッセージ集計ダッシュボード%0A&url=http://hinata-talk-cnt.com/&hashtags=日向坂46メッセージ" target="_blank" rel="noopener noreferrer" class="btn-share-x">
+                        <svg viewBox="0 0 1200 1227" width="14" height="14" fill="currentColor" aria-hidden="true">
                             <path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"></path>
                         </svg>
                         Xでシェア
                     </a>
                 </div>
-
             </div>
         </section>
         
         <section class="card">
             <div class="card-header">Developer</div>
-            <div style="padding:15px; font-size:13px; line-height:1.6; color:#444;">
-                    <a href="https://x.com/hinata_talk_cnt" target="_blank" style="text-decoration:none; color:var(--twitter-blue); font-weight:bold; font-size:14px; display:inline-flex; align-items:center; gap:4px;">
-                        <span>𝕏</span> @hinata_talk_cnt
-                    </a>
+            <div class="dev-link-wrap">
+                <a href="https://x.com/hinata_talk_cnt" target="_blank" rel="noopener noreferrer" class="dev-link">
+                    <span>𝕏</span> @hinata_talk_cnt
+                </a>
             </div>
         </section>
 
         <section class="card">
-            <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" style="font-size:12px; color:#888;"></span></div>
+            <div class="card-header">📅 カレンダー<span id="calCurrentMonthLabel" class="cal-month-label"></span></div>
             <div class="calendar-widget">
                 <div class="cal-header">
-                    <button class="cal-nav" id="btnPrevMonth" aria-label="前月">◀</button>
+                    <button type="button" class="cal-nav" id="btnPrevMonth" aria-label="前月">◀</button>
                     <span class="cal-title" id="calTitle">-</span>
-                    <button class="cal-nav" id="btnNextMonth" aria-label="次月">▶</button>
-                    <button class="cal-nav cal-latest" id="btnLatest">最新</button>
+                    <button type="button" class="cal-nav" id="btnNextMonth" aria-label="次月">▶</button>
+                    <button type="button" class="cal-nav cal-latest" id="btnLatest">最新</button>
                 </div>
-                <div class="cal-grid"><div class="cal-head">月</div><div class="cal-head">火</div><div class="cal-head">水</div><div class="cal-head">木</div><div class="cal-head">金</div><div class="cal-head">土</div><div class="cal-head">日</div></div>
+                <div class="cal-grid">
+                    <div class="cal-head">月</div><div class="cal-head">火</div><div class="cal-head">水</div>
+                    <div class="cal-head">木</div><div class="cal-head">金</div><div class="cal-head">土</div><div class="cal-head">日</div>
+                </div>
                 <div id="miniCalendar" class="cal-grid"></div>
             </div>
         </section>
@@ -138,9 +148,9 @@
     <main class="main-content" id="mainContentScroll">
         
         <nav class="main-nav">
-            <button id="navAnalytics" class="nav-btn active">📊 データ</button>
-            <button id="navMembers" class="nav-btn">👥 メンバー</button>
-            <button id="navRecords" class="nav-btn">🏆 記録</button>
+            <button type="button" id="navAnalytics" class="nav-btn active">📊 データ</button>
+            <button type="button" id="navMembers" class="nav-btn">👥 メンバー</button>
+            <button type="button" id="navRecords" class="nav-btn">🏆 記録</button>
         </nav>
         
         <div class="stats-row" id="topStatsRow">
@@ -155,9 +165,9 @@
             <div id="viewAnalytics" class="app-view active">
                 <div class="controls-bar">
                     <div class="view-title">
-                        <button class="title-nav-btn" id="btnPrevPeriod" aria-label="前の期間">◀</button>
+                        <button type="button" class="title-nav-btn" id="btnPrevPeriod" aria-label="前の期間">◀</button>
                         <span id="pageTitle">読み込み中...</span>
-                        <button class="title-nav-btn" id="btnNextPeriod" aria-label="次の期間">▶</button>
+                        <button type="button" class="title-nav-btn" id="btnNextPeriod" aria-label="次の期間">▶</button>
                     </div>
                     <select id="genSelector" aria-label="期別絞り込み"></select>
                 </div>
@@ -166,14 +176,14 @@
             
             <div id="viewMembers" class="app-view">
                 <div class="controls-bar">
-                    <select id="genSelector2" style="font-size: 15px; font-weight: bold; padding: 8px 12px;" aria-label="期別絞り込み"></select>
+                    <select id="genSelector2" class="record-select auto-width" aria-label="期別絞り込み"></select>
                 </div>
                 <div id="memberGrid"></div>
             </div>
 
             <div id="viewRecords" class="app-view">
-                <div class="controls-bar" style="flex-direction: row; flex-wrap: wrap; gap: 10px;">
-                    <select id="recordTypeSelector" style="font-size: 15px; font-weight: bold; padding: 8px 12px; flex: 1; min-width: 200px;" aria-label="記録の種類">
+                <div class="controls-bar record-controls">
+                    <select id="recordTypeSelector" class="record-select" aria-label="記録の種類">
                         <optgroup label="▼ 日次記録 (Daily)">
                             <option value="daily_max">👑 送信件数</option>
                             <option value="wins">🥇 1位回数</option>
@@ -194,14 +204,13 @@
                         </optgroup>
                     </select>
                     
-                    <div style="display: flex; align-items: center; background: #f9f9f9; border: 1px solid #ddd; padding: 6px 12px; border-radius: 6px;">
-                        <label style="font-size: 13px; font-weight: bold; color: #444; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
-                            <input type="checkbox" id="recordSince5thGen" style="cursor: pointer; margin: 0;" />
+                    <div class="checkbox-wrap">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="recordSince5thGen" class="checkbox-input" />
                             五期生開始以降で比較
                         </label>
                     </div>
-
-                    <div id="recordPeriodInfo" style="width: 100%; text-align: right; font-size: 11px; color: #888; margin-top: 5px; margin-bottom: 0px; padding-right: 5px; font-weight: bold; letter-spacing: 0.5px;"></div>
+                    <div id="recordPeriodInfo" class="record-period-info"></div>
                 </div>
                 <div id="recordContentArea"></div>
             </div>
@@ -214,42 +223,39 @@
 <div id="modal" class="modal" role="dialog" aria-modal="true">
     <div class="modal-head">
         <div class="modal-nav-row">
-            <button class="nav-arrow" id="btnModalPrev" aria-label="前のメンバー">◀</button>
+            <button type="button" class="nav-arrow" id="btnModalPrev" aria-label="前のメンバー">◀</button>
             <div class="modal-title-col">
                 <h2 id="modalName" style="margin:0;">-</h2>
-                <div id="modalSubtitle" style="font-size:11px; color:#888;"></div>
+                <div id="modalSubtitle" class="modal-subtitle"></div>
             </div>
-            <button class="nav-arrow" id="btnModalNext" aria-label="次のメンバー">▶</button>
+            <button type="button" class="nav-arrow" id="btnModalNext" aria-label="次のメンバー">▶</button>
         </div>
-        <div style="display:flex; align-items:center; gap:6px; justify-content:flex-end; margin-top:10px;">
-            <button class="title-nav-btn" onclick="window.shiftModalPeriod(1)" aria-label="前の期間" style="padding: 4px 10px; font-size:12px; border-radius: 4px;">◀</button>
-            
-            <select id="modalPeriodSelector" style="min-width:160px; margin: 0;" aria-label="期間選択"></select>
-            
-            <button class="title-nav-btn" onclick="window.shiftModalPeriod(-1)" aria-label="次の期間" style="padding: 4px 10px; font-size:12px; border-radius: 4px;">▶</button>
-            
-            <button class="close-btn" onclick="window.closeModal()" aria-label="閉じる" style="margin-left: 4px;">×</button>
-        </div>
-    </div>
-    <div class="stats-row" id="modalStatsRow" style="margin-bottom:0; grid-template-columns: repeat(4, 1fr);">
-        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;">
-            <span class="stat-label">合計</span>
-            <span class="stat-val" id="mTotal" style="font-size:20px;">-</span>
-        </div>
-        <div class="stat-box" style="padding:10px; box-shadow:none; background:#f9f9f9;">
-            <span class="stat-label" id="mMaxLabel">月間最高</span>
-            <span class="stat-val" id="mMax" style="font-size:20px;">-</span>
-        </div>
-        <div class="stat-box" id="mAvgBox1" style="padding:10px; box-shadow:none; background:#f9f9f9;">
-            <span class="stat-label">月平均</span>
-            <span class="stat-val" id="mAvg1" style="font-size:20px;">-</span>
-        </div>
-        <div class="stat-box" id="mAvgBox2" style="padding:10px; box-shadow:none; background:#f9f9f9;">
-            <span class="stat-label">1日平均</span>
-            <span class="stat-val" id="mAvg2" style="font-size:20px;">-</span>
+        <div class="modal-period-controls">
+            <button type="button" class="title-nav-btn modal-period-btn" onclick="window.shiftModalPeriod(1)" aria-label="前の期間">◀</button>
+            <select id="modalPeriodSelector" class="modal-select" aria-label="期間選択"></select>
+            <button type="button" class="title-nav-btn modal-period-btn" onclick="window.shiftModalPeriod(-1)" aria-label="次の期間">▶</button>
+            <button type="button" class="close-btn modal-close-btn-sub" onclick="window.closeModal()" aria-label="閉じる">×</button>
         </div>
     </div>
     
+    <div class="stats-row modal-stats-row" id="modalStatsRow">
+        <div class="stat-box modal-stat-box">
+            <span class="stat-label">合計</span>
+            <span class="stat-val modal-stat-val" id="mTotal">-</span>
+        </div>
+        <div class="stat-box modal-stat-box">
+            <span class="stat-label" id="mMaxLabel">月間最高</span>
+            <span class="stat-val modal-stat-val" id="mMax">-</span>
+        </div>
+        <div class="stat-box modal-stat-box" id="mAvgBox1">
+            <span class="stat-label">月平均</span>
+            <span class="stat-val modal-stat-val" id="mAvg1">-</span>
+        </div>
+        <div class="stat-box modal-stat-box" id="mAvgBox2">
+            <span class="stat-label">1日平均</span>
+            <span class="stat-val modal-stat-val" id="mAvg2">-</span>
+        </div>
+    </div>
     <div class="chart-box"><canvas id="personalChart"></canvas></div>
 </div>
 
@@ -258,13 +264,24 @@
         <div class="modal-title-col">
             <h2 id="dailyModalTitle" style="margin:0; font-size:18px;"></h2>
         </div>
-        <button class="close-btn" onclick="window.closeModal()" aria-label="閉じる">×</button>
+        <button type="button" class="close-btn" onclick="window.closeModal()" aria-label="閉じる">×</button>
     </div>
     <div id="dailyRankingArea" class="daily-list-wrap"></div>
 </div>
 
 <script type="module">
-    import('./js/main.js?v=' + new Date().getTime()).catch(console.error);
+    import(`./js/main.js?v=${new Date().getTime()}`).catch(console.error);
 </script>
+
+<script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('ServiceWorker 登録完了:', reg.scope))
+                    .catch(err => console.log('ServiceWorker 登録失敗:', err));
+            });
+        }
+</script>
+
 </body>
 </html>

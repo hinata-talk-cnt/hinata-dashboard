@@ -3,7 +3,6 @@ import { renderCalendarWidget, shiftCal } from './calendar.js';
 import { renderRankingView, renderMemberCatalog, renderRecordPage } from './views.js';
 import { openModal, closeModal, openMonthlyRankingModal, openDailyRankingModal, updateModalContent, shiftModalPeriod } from './modal.js';
 
-
 // キャッシュバスティング用：ファイルの読み込み時に常に最新のデータを取得するためのタイムスタンプ
 const DATA_VER = new Date().getTime();
 
@@ -15,8 +14,8 @@ const init = async () => {
     try {
         // Promise.all を使い、ログデータとメンバー情報のJSONを並列で取得し、ロード時間を短縮
         const [logs, members] = await Promise.all([
-            fetch('data.json?v=' + DATA_VER).then(res => res.json()), 
-            fetch('members.json?v=' + DATA_VER).then(res => res.json())
+            fetch(`data.json?v=${DATA_VER}`).then(res => res.json()), 
+            fetch(`members.json?v=${DATA_VER}`).then(res => res.json())
         ]);
         
         state.allLogs = logs; 
@@ -24,7 +23,7 @@ const init = async () => {
         
         // メンバーデータの初期セットアップ（カラー設定のフォールバックと、高速検索用Mapの作成）
         state.allMembers.forEach(m => {
-            if(!m.color || m.color === "") m.color = "#4b89dc"; // デフォルトカラー
+            if (!m.color || m.color === "") m.color = "#4b89dc"; // デフォルトカラー
             state.memberMap[m.name] = m;
         });
         
@@ -62,31 +61,37 @@ function processDataRange() {
     
     // 1. 全データから、アプリ全体で扱う日付の最小値(min)と最大値(max)を取得
     state.allLogs.forEach(l => { 
-        const c = parseInt(l.count, 10) || 0;
-        if(l.date && c > 0) { 
-            const d = new Date(l.date); d.setHours(0,0,0,0);
-            if(!state.minDateObj || d < state.minDateObj) state.minDateObj = d;
-            if(!state.maxDateObj || d > state.maxDateObj) state.maxDateObj = d;
+        const c = Number(l.count) || 0;
+        if (l.date && c > 0) { 
+            const d = new Date(l.date); 
+            d.setHours(0, 0, 0, 0);
+            
+            if (!state.minDateObj || d < state.minDateObj) state.minDateObj = d;
+            if (!state.maxDateObj || d > state.maxDateObj) state.maxDateObj = d;
             
             const t = d.getTime();
-            if(t > maxTs) { maxTs = t; state.latestValidDateStr = l.date; }
+            if (t > maxTs) { 
+                maxTs = t; 
+                state.latestValidDateStr = l.date; 
+            }
         } 
     });
     
     // フォールバック：データが1件もない場合は本日をセット
-    if(!state.latestValidDateStr) {
+    if (!state.latestValidDateStr) {
         const now = new Date();
         state.latestValidDateStr = formatDateStr(now);
-        if(!state.minDateObj) state.minDateObj = now;
-        if(!state.maxDateObj) state.maxDateObj = now;
+        if (!state.minDateObj) state.minDateObj = now;
+        if (!state.maxDateObj) state.maxDateObj = now;
     }
 
     // 2. メンバー個別の「最初の送信日」と「最後の送信日」を特定
     state.allMembers.forEach(m => { m.firstLogDate = null; m.lastLogDate = null; });
     state.allLogs.forEach(l => {
-        const count = parseInt(l.count, 10) || 0;
+        const count = Number(l.count) || 0;
         if (count > 0 && state.memberMap[l.name]) {
-            const d = new Date(l.date); d.setHours(0, 0, 0, 0);
+            const d = new Date(l.date); 
+            d.setHours(0, 0, 0, 0);
             const m = state.memberMap[l.name];
             if (!m.firstLogDate || d < m.firstLogDate) m.firstLogDate = d;
             if (!m.lastLogDate || d > m.lastLogDate) m.lastLogDate = d;
@@ -98,7 +103,8 @@ function processDataRange() {
     state.allMembers.forEach(m => {
         // 開始日の決定：JSONのjoinDateを最優先し、なければ初送信日、それもなければアプリ最古日
         if (m.joinDate) {
-            m.actualStartDate = new Date(m.joinDate); m.actualStartDate.setHours(0, 0, 0, 0);
+            m.actualStartDate = new Date(m.joinDate); 
+            m.actualStartDate.setHours(0, 0, 0, 0);
         } else if (m.firstLogDate) {
             m.actualStartDate = new Date(m.firstLogDate);
         } else {
@@ -108,11 +114,14 @@ function processDataRange() {
         if (m.actualStartDate < state.minDateObj) m.actualStartDate = new Date(state.minDateObj);
 
         // 終了日の決定：基本はアプリ最新日。卒業生の場合は卒業日(gradDate)または最終送信日の遅い方をセット
-        m.actualEndDate = new Date(state.maxDateObj); m.actualEndDate.setHours(23, 59, 59, 999);
+        m.actualEndDate = new Date(state.maxDateObj); 
+        m.actualEndDate.setHours(23, 59, 59, 999);
         if (m.gradDate) {
-            const gradD = new Date(m.gradDate); gradD.setHours(23, 59, 59, 999);
+            const gradD = new Date(m.gradDate); 
+            gradD.setHours(23, 59, 59, 999);
             if (m.lastLogDate && m.lastLogDate > gradD) {
-                m.actualEndDate = new Date(m.lastLogDate); m.actualEndDate.setHours(23, 59, 59, 999);
+                m.actualEndDate = new Date(m.lastLogDate); 
+                m.actualEndDate.setHours(23, 59, 59, 999);
             } else {
                 m.actualEndDate = gradD;
             }
@@ -130,29 +139,31 @@ function initApp() {
     
     // 存在する「年月」「年」をSetに集約しつつ、全期間の総件数を計算
     state.allLogs.forEach(l => { 
-        const c = parseInt(l.count, 10) || 0;
-        if(l.date && c > 0) { 
+        const c = Number(l.count) || 0;
+        if (l.date && c > 0) { 
             const p = l.date.split('/'); 
-            months.add(p[0]+'/'+p[1]); 
+            months.add(`${p[0]}/${p[1]}`); 
             years.add(p[0]); 
             grandTotal += c; 
         } 
     });
     
     // 新しい順にソート
-    const sortedMonths = Array.from(months).sort((a,b) => new Date(b+'/1') - new Date(a+'/1'));
+    const sortedMonths = Array.from(months).sort((a, b) => new Date(`${b}/1`) - new Date(`${a}/1`));
     const sortedYears = Array.from(years).sort().reverse();
 
     // --- 月別アーカイブリストの生成 ---
     const archiveList = document.getElementById('archiveList');
     sortedMonths.forEach(ym => {
-        let count = 0; const [y, m] = ym.split('/').map(Number);
+        let count = 0; 
+        const [y, m] = ym.split('/').map(Number);
         state.allLogs.forEach(l => { 
             const p = l.date.split('/').map(Number); 
-            if(p[0] === y && p[1] === m) count += (parseInt(l.count, 10) || 0); 
+            if (p[0] === y && p[1] === m) count += (Number(l.count) || 0); 
         });
-        const li = document.createElement('li'); li.className = 'archive-item';
-        li.innerHTML = `<span>${ym.replace('/','年')}月</span><span class="archive-count">${count.toLocaleString()}件</span>`;
+        const li = document.createElement('li'); 
+        li.className = 'archive-item';
+        li.innerHTML = `<span>${ym.replace('/', '年')}月</span><span class="archive-count">${count.toLocaleString()}件</span>`;
         // リストクリックで該当月のデータを表示
         li.onclick = () => selectPeriod('month', ym); 
         archiveList.appendChild(li);
@@ -160,47 +171,53 @@ function initApp() {
 
     // --- 期間（全期間・年・半期）アーカイブリストの生成 ---
     const periodList = document.getElementById('periodList');
-    const allLi = document.createElement('li'); allLi.className = 'archive-item';
+    const allLi = document.createElement('li'); 
+    allLi.className = 'archive-item';
     allLi.innerHTML = `<span>全期間</span><span class="archive-count">${grandTotal.toLocaleString()}件</span>`;
     allLi.onclick = () => selectPeriod('all', 'all'); 
     periodList.appendChild(allLi);
 
     sortedYears.forEach(yStr => {
         const yNum = Number(yStr);
-        let tY=0, tH1=0, tH2=0;
+        let tY = 0, tH1 = 0, tH2 = 0;
         
         // 年間、上半期、下半期のそれぞれの合計件数を計算
         state.allLogs.forEach(l => { 
             const p = l.date.split('/').map(Number); 
-            const c = parseInt(l.count, 10) || 0; 
-            if(p[0] === yNum){ 
+            const c = Number(l.count) || 0; 
+            if (p[0] === yNum) { 
                 tY += c; 
-                if(p[1] <= 6) tH1 += c; else tH2 += c; 
+                if (p[1] <= 6) tH1 += c; else tH2 += c; 
             } 
         });
         
         // リストアイテムをDOMに追加するヘルパー関数
         const addItem = (type, label, count) => {
-            const li = document.createElement('li'); li.className = 'archive-item';
+            const li = document.createElement('li'); 
+            li.className = 'archive-item';
             li.innerHTML = `<span>${yStr}年 ${label}</span><span class="archive-count">${count.toLocaleString()}件</span>`;
             li.onclick = () => selectPeriod(type, yStr); 
             periodList.appendChild(li);
         };
         addItem('year', '年間', tY); 
-        if(tH1 > 0) addItem('h1', '上半期', tH1); 
-        if(tH2 > 0) addItem('h2', '下半期', tH2);
+        if (tH1 > 0) addItem('h1', '上半期', tH1); 
+        if (tH2 > 0) addItem('h2', '下半期', tH2);
     });
 
     // --- プルダウン（期別絞り込み）の初期化 ---
-    const genSel = document.getElementById('genSelector'), genSel2 = document.getElementById('genSelector2');
+    const genSel = document.getElementById('genSelector');
+    const genSel2 = document.getElementById('genSelector2');
     let genHtml = '<option value="all">全メンバー</option>';
-    ['1','2','3','4','5'].forEach(g => { genHtml += `<option value="${g}">${genKanji[g]}</option>`; });
-    genSel.innerHTML = genHtml; genSel2.innerHTML = genHtml;
+    ['1', '2', '3', '4', '5'].forEach(g => { 
+        genHtml += `<option value="${g}">${genKanji[g]}</option>`; 
+    });
+    genSel.innerHTML = genHtml; 
+    genSel2.innerHTML = genHtml;
 
     // --- アプリの初期表示 ---
     // 最新の日付データがあれば「日次」モードで表示。なければ最新「月」を表示。
     if (state.latestValidDateStr) selectPeriod('day', state.latestValidDateStr);
-    else if(sortedMonths.length > 0) selectPeriod('month', sortedMonths[0]);
+    else if (sortedMonths.length > 0) selectPeriod('month', sortedMonths[0]);
     
     // メンバータブのアイコン一覧も初期描画しておく
     renderMemberCatalog();
@@ -224,14 +241,15 @@ export function selectPeriod(type, value) {
     state.currentFilter = { type, value };
     
     // 日次・月次が選ばれた場合は、カレンダーの表示月も連動させる
-    if(type === 'day' || type === 'month') { 
+    if (type === 'day' || type === 'month') { 
         const p = value.split('/').map(Number); 
         state.calYear = p[0]; 
         state.calMonth = p[1] - 1; 
     }
     
     // モバイルでサイドバーが開いている場合は閉じる処理
-    const sidebar = document.getElementById('sidebar'), sidebarOverlay = document.getElementById('sidebarOverlay');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
     if (sidebar && sidebar.classList.contains('open')) { 
         sidebar.classList.remove('open'); 
         sidebarOverlay.classList.remove('open'); 
@@ -279,20 +297,24 @@ function updateDashboard() {
     
     // 現在のフィルターに合致するログを集計
     state.allLogs.forEach(l => { 
-        if(isDateInPeriod(l.date, state.currentFilter)) { 
-            const c = parseInt(l.count, 10) || 0; 
+        if (isDateInPeriod(l.date, state.currentFilter)) { 
+            const c = Number(l.count) || 0; 
             total += c; 
-            if(c > 0) daysSet.add(l.date); // データが存在する日数をカウント
+            if (c > 0) daysSet.add(l.date); // データが存在する日数をカウント
             memTotal[l.name] = (memTotal[l.name] || 0) + c; 
         } 
     });
 
     // 「最多送信メンバー（TOP MEMBER）」を算出
     let maxCount = 0, topMembers = [];
-    for(let m in memTotal) { if(memTotal[m] > maxCount) maxCount = memTotal[m]; }
+    for (let m in memTotal) { 
+        if (memTotal[m] > maxCount) maxCount = memTotal[m]; 
+    }
     if (maxCount > 0) { 
         // 同率1位が複数人いる場合を考慮
-        for(let m in memTotal) { if(memTotal[m] === maxCount) topMembers.push(m); } 
+        for (let m in memTotal) { 
+            if (memTotal[m] === maxCount) topMembers.push(m); 
+        } 
     }
     
     const topMemEl = document.getElementById('valStat2');
@@ -302,22 +324,25 @@ function updateDashboard() {
         topMemEl.classList.toggle('multi', topMembers.length > 1);
         topMemEl.setAttribute('title', topMembers.join(" ")); // ホバー時に全員の名前を表示
     } else { 
-        topMemEl.innerText = "-"; topMemEl.classList.remove('multi'); 
+        topMemEl.innerText = "-"; 
+        topMemEl.classList.remove('multi'); 
     }
 
     // 表示用のタイトルテキストを生成
     let titleText = state.currentFilter.value;
     if (state.currentFilter.type === 'all') titleText = "全期間";
-    else if (state.currentFilter.type === 'year') titleText = state.currentFilter.value + "年 年間";
-    else if (state.currentFilter.type === 'h1') titleText = state.currentFilter.value + "年 上半期";
-    else if (state.currentFilter.type === 'h2') titleText = state.currentFilter.value + "年 下半期";
+    else if (state.currentFilter.type === 'year') titleText = `${state.currentFilter.value}年 年間`;
+    else if (state.currentFilter.type === 'h1') titleText = `${state.currentFilter.value}年 上半期`;
+    else if (state.currentFilter.type === 'h2') titleText = `${state.currentFilter.value}年 下半期`;
     
     // 統計ボックスに数値を反映
     document.getElementById('pageTitle').innerText = titleText;
     document.getElementById('valStat1').innerText = total.toLocaleString();
-    document.getElementById('valStat3').innerText = daysSet.size + "日";
+    document.getElementById('valStat3').innerText = `${daysSet.size}日`;
     document.getElementById('valStat4').innerText = daysSet.size ? (total / daysSet.size).toFixed(1) : 0.0;
-    if(document.getElementById('subStat2')) document.getElementById('subStat2').innerText = maxCount.toLocaleString() + "件";
+    
+    const subStat2 = document.getElementById('subStat2');
+    if (subStat2) subStat2.innerText = `${maxCount.toLocaleString()}件`;
 
     // 日次モードの場合、不要なボックス（集計日数など）をCSSで隠すためのクラスを切り替え
     const statsRowEl = document.getElementById('topStatsRow');
@@ -330,8 +355,10 @@ function updateDashboard() {
     // メインビュー上部の「◀ 期間 ▶」ボタンの有効/無効制御
     // （これ以上過去・未来のデータがない場合はボタンを押せなくする）
     // --------------------------------------------------
-    const btnPrev = document.getElementById('btnPrevPeriod'), btnNext = document.getElementById('btnNextPeriod');
-    btnPrev.disabled = false; btnNext.disabled = false;
+    const btnPrev = document.getElementById('btnPrevPeriod');
+    const btnNext = document.getElementById('btnNextPeriod');
+    btnPrev.disabled = false; 
+    btnNext.disabled = false;
     
     if (state.currentFilter.type === 'month') {
         const [y, m] = state.currentFilter.value.split('/').map(Number);
@@ -342,7 +369,7 @@ function updateDashboard() {
         if (new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1) < state.minDateObj) btnPrev.disabled = true;
         if (new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) > state.maxDateObj) btnNext.disabled = true;
     } else if (['year', 'h1', 'h2'].includes(state.currentFilter.type)) {
-         const y = parseInt(state.currentFilter.value, 10);
+         const y = Number(state.currentFilter.value);
          if ((state.currentFilter.type === 'h1' ? new Date(y - 1, 5, 30) : new Date(y - 1, 11, 31)) < state.minDateObj) btnPrev.disabled = true;
          if ((state.currentFilter.type === 'h2' ? new Date(y + 1, 6, 1) : new Date(y + 1, 0, 1)) > state.maxDateObj) btnNext.disabled = true;
     }
@@ -364,7 +391,10 @@ function bindEvents() {
     // カレンダー操作
     document.getElementById('btnPrevMonth').onclick = () => shiftCal(-1);
     document.getElementById('btnNextMonth').onclick = () => shiftCal(1);
-    document.getElementById('btnLatest').onclick = () => { if (state.latestValidDateStr) selectPeriod('day', state.latestValidDateStr); else alert("データがありません"); };
+    document.getElementById('btnLatest').onclick = () => { 
+        if (state.latestValidDateStr) selectPeriod('day', state.latestValidDateStr); 
+        else alert("データがありません"); 
+    };
     
     // 期間操作
     document.getElementById('btnPrevPeriod').onclick = () => shiftPeriod(-1);
@@ -442,7 +472,7 @@ function shiftPeriod(offset) {
         selectPeriod('day', formatDateStr(d));
         
     } else if (['year', 'h1', 'h2'].includes(type)) {
-         let y = parseInt(value, 10) + offset, pStart, pEnd;
+         let y = Number(value) + offset, pStart, pEnd;
          if (type === 'h1') { pStart = new Date(y, 0, 1); pEnd = new Date(y, 5, 30); } 
          else if (type === 'h2') { pStart = new Date(y, 6, 1); pEnd = new Date(y, 11, 31); } 
          else { pStart = new Date(y, 0, 1); pEnd = new Date(y, 11, 31); }

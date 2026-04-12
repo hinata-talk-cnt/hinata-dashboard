@@ -54,7 +54,7 @@ export const genKanji = { '1': '一期生', '2': '二期生', '3': '三期生', 
 /**
  * Dateオブジェクトを「YYYY/MM/DD」形式の文字列に変換
  * データのキーや画面表示用として統一されたフォーマットを提供
- * * @param {Date} dObj - 変換したいDateオブジェクト
+ * @param {Date} dObj - 変換したいDateオブジェクト
  * @returns {string} フォーマットされた日付文字列 (例: "2024/01/05")
  */
 export const formatDateStr = (dObj) => {
@@ -66,70 +66,77 @@ export const formatDateStr = (dObj) => {
 
 /**
  * 指定した日付文字列が、現在選択されている集計期間（フィルター）に含まれているかを判定
- * * @param {string} dateStr - 判定対象の日付文字列 (例: "2024/01/05")
+ * @param {string} dateStr - 判定対象の日付文字列 (例: "2024/01/05")
  * @param {Object} filter - 判定基準となるフィルターオブジェクト ({ type, value })
  * @returns {boolean} 期間に含まれていれば true、そうでなければ false
  */
 export const isDateInPeriod = (dateStr, filter) => {
-    if(!dateStr) return false;
-    if(filter.type === 'all') return true; // 全期間の場合は無条件でtrue
+    if (!dateStr) return false;
+    if (filter.type === 'all') return true; // 全期間の場合は無条件でtrue
 
-    // "YYYY/MM/DD" を [YYYY, MM, DD] の数値配列に変換して比較
-    const p = dateStr.split('/').map(Number);
-    
-    if(filter.type === 'day') {
-        const fP = filter.value.split('/').map(Number);
-        return p[0]===fP[0] && p[1]===fP[1] && p[2]===fP[2];
+    // "YYYY/MM/DD" を [YYYY, MM, DD] の数値配列に変換
+    const [y, m, d] = dateStr.split('/').map(Number);
+    const val = filter.value;
+
+    switch (filter.type) {
+        case 'day': {
+            const [fy, fm, fd] = val.split('/').map(Number);
+            return y === fy && m === fm && d === fd;
+        }
+        case 'month': {
+            const [fy, fm] = val.split('/').map(Number);
+            return y === fy && m === fm;
+        }
+        case 'year':
+            return y === Number(val);
+        case 'h1':
+            return y === Number(val) && m <= 6;
+        case 'h2':
+            return y === Number(val) && m >= 7;
+        default:
+            return false;
     }
-    if(filter.type === 'month') {
-        const fP = filter.value.split('/').map(Number);
-        return p[0]===fP[0] && p[1]===fP[1];
-    }
-    if(filter.type === 'year') return p[0] === Number(filter.value);
-    
-    // h1=上半期(1〜6月)、h2=下半期(7〜12月)
-    if(filter.type === 'h1') return p[0] === Number(filter.value) && p[1] <= 6;
-    if(filter.type === 'h2') return p[0] === Number(filter.value) && p[1] >= 7;
-    
-    return false;
 };
 
 /**
- * 指定したメンバーが、現在選択されている集計期間（state.currentFilter）において
- * 「活動中（在籍中）」であったかを判定
- * （※加入前の期間や、卒業後の期間のランキングから除外するために使用）
- * * @param {Object} member - 判定対象のメンバーオブジェクト
+ * 指定したメンバーが、現在選択されている集計期間において「活動中（在籍中）」であったかを判定
+ * （加入前の期間や、卒業後の期間のランキングから除外するために使用）
+ * @param {Object} member - 判定対象のメンバーオブジェクト
  * @returns {boolean} 期間中に1日でも在籍していれば true
  */
 export const isActiveMemberInPeriod = (member) => {
+    const { type, value } = state.currentFilter;
+    
+    if (type === 'all') return true;
+
     let pStart, pEnd;
-    
+
     // 現在のフィルター種別に応じて、期間の開始日(pStart)と終了日(pEnd)を算出
-    if (state.currentFilter.type === 'day') {
-        pStart = new Date(state.currentFilter.value); pStart.setHours(0, 0, 0, 0);
-        pEnd = new Date(state.currentFilter.value); pEnd.setHours(23, 59, 59, 999);
-    } else if (state.currentFilter.type === 'month') {
-        const [y, m] = state.currentFilter.value.split('/').map(Number);
-        pStart = new Date(y, m - 1, 1); pStart.setHours(0, 0, 0, 0);
-        // 翌月の0日目を指定することで、当月の末日を取得
-        pEnd = new Date(y, m, 0); pEnd.setHours(23, 59, 59, 999);
-    } else if (state.currentFilter.type === 'year' || state.currentFilter.type === 'h1') {
-        pStart = new Date(state.currentFilter.value, 0, 1); pStart.setHours(0, 0, 0, 0);
-        // 上半期なら6月30日、年間なら12月31日を終了日に設定
-        pEnd = (state.currentFilter.type === 'h1') ? new Date(state.currentFilter.value, 5, 30) : new Date(state.currentFilter.value, 11, 31);
-        pEnd.setHours(23, 59, 59, 999);
-    } else if (state.currentFilter.type === 'h2') {
-        pStart = new Date(state.currentFilter.value, 6, 1); pStart.setHours(0, 0, 0, 0);
-        pEnd = new Date(state.currentFilter.value, 11, 31); pEnd.setHours(23, 59, 59, 999);
+    if (type === 'day') {
+        pStart = new Date(value);
+        pEnd = new Date(value);
+    } else if (type === 'month') {
+        const [y, m] = value.split('/').map(Number);
+        pStart = new Date(y, m - 1, 1);
+        pEnd = new Date(y, m, 0); // 翌月の0日目で当月末日を取得
     } else {
-        // 'all' (全期間) の場合は常にアクティブ
-        return true; 
+        const y = Number(value);
+        if (type === 'year') {
+            pStart = new Date(y, 0, 1);
+            pEnd = new Date(y, 11, 31);
+        } else if (type === 'h1') {
+            pStart = new Date(y, 0, 1);
+            pEnd = new Date(y, 5, 30);
+        } else if (type === 'h2') {
+            pStart = new Date(y, 6, 1);
+            pEnd = new Date(y, 11, 31);
+        }
     }
-    
-    // フィルターの終了日が、メンバーの活動開始日より前なら false (まだ加入していない)
-    if (pEnd < member.actualStartDate) return false;
-    // フィルターの開始日が、メンバーの活動終了日より後なら false (すでに卒業している)
-    if (pStart > member.actualEndDate) return false;
-    
-    return true;
+
+    // 時刻を 00:00:00.000 と 23:59:59.999 に統一セット
+    pStart.setHours(0, 0, 0, 0);
+    pEnd.setHours(23, 59, 59, 999);
+
+    // フィルター終了日が加入日以降であり、かつフィルター開始日が卒業日以前であればアクティブ
+    return pEnd >= member.actualStartDate && pStart <= member.actualEndDate;
 };

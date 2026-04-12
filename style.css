@@ -1,48 +1,39 @@
 /* =========================================
    基本設定 (Base & Reset)
    ========================================= */
+* { box-sizing: border-box; }
 
-/* 全要素の幅・高さの計算にpaddingとborderを含める（レイアウト崩れ防止） */
-* {
-    box-sizing: border-box;
-}
-
-/* ページ内リンクで移動する際に、スムーズにスクロールさせる設定 */
 html {
     scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #ccc transparent;
 }
 
-/* --- カスタムスクロールバー（Webkit系ブラウザ用） --- */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #999;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #999; }
 
-/* --- テーマカラー・変数の定義 --- 
-   アプリ全体で使う色をここで一元管理
-   後からテーマカラーを変更したい場合は、ここの値を変えるだけで全体に反映 */
 :root {
-    --bg-color: #f4f7f6;       /* アプリ全体の背景色 */
-    --card-bg: #ffffff;        /* カード要素の背景色 */
-    --text-main: #333333;      /* メインテキスト色 */
-    --text-sub: #555555;       /* サブテキスト色 */
-    --accent-color: #4b89dc;   /* メインアクセント */
+    --bg-color: #f4f7f6;
+    --card-bg: #ffffff;
+    --text-main: #333333;
+    --text-sub: #555555;
+    
+    --accent-color: #4b89dc;
     --accent-pink: #e91e63;
     --accent-orange: #ff9800;
     --accent-green: #4caf50;
-    --border-color: #eeeeee;   /* 境界線の色 */
-    --hover-bg: #f0f8ff;       /* ホバー時の背景色 */
-    --twitter-blue: #1da1f2;   /* X(Twitter)のブランドカラー */
+    
+    --border-color: #eeeeee;
+    --hover-bg: #f0f8ff;
+    --twitter-blue: #1da1f2;
+
+    --transition-speed: 0.2s;
+    --z-header: 900;
+    --z-overlay: 990;
+    --z-sidebar: 1000;
+    --z-modal: 1010;
 }
 
 body {
@@ -52,640 +43,257 @@ body {
     padding: 20px;
     color: var(--text-main);
 }
+body.no-scroll { overflow: hidden; }
 
-/* モーダル表示時に背後の画面がスクロールしてしまうのを防ぐためのクラス */
-body.no-scroll {
-    overflow: hidden;
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent-color); outline-offset: 2px;
 }
 
+/* ※ローディング画面のCSSはHTML(Critical CSS)に移行したため削除済 */
+
 /* =========================================
-   全体レイアウト (PC表示ベース)
+   全体レイアウト & PC推奨バナー
    ========================================= */
 .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    gap: 20px;
-    align-items: flex-start; /* サイドバーとメインコンテンツの上端を揃える */
+    max-width: 1200px; margin: 0 auto;
+    display: flex; gap: 20px; align-items: flex-start;
 }
-
-/* --- 左サイドバー --- */
 .sidebar { 
-    width: 280px;
-    flex-shrink: 0; /* 画面幅が狭くなってもサイドバーの幅を縮めない */
-    display: flex;
-    flex-direction: column;
-    gap: 20px; 
-    
-    /* 画面をスクロールしてもサイドバーが画面内に追従・固定される設定 */
-    position: sticky;
-    top: 20px;
-    height: calc(100vh - 40px);
-    overflow-y: auto;
+    width: 280px; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 20px; 
+    position: sticky; top: 20px; height: calc(100vh - 40px); overflow-y: auto;
 }
+.main-content { flex-grow: 1; min-width: 0; }
 
-/* --- メインコンテンツ領域 --- */
-.main-content {
-    flex-grow: 1; /* 残りの幅をすべて埋める */
-    min-width: 0; /* Flexbox内で子要素（表など）が親の幅を突き破るのを防ぐ */
-}
+.mobile-warning, .mobile-header, .sidebar-overlay, .close-sidebar-btn { display: none; }
 
 /* =========================================
-   スマホ専用のUI (PC時は非表示)
-   ========================================= */
-/* デスクトップファーストの設計思想。PCではこれらのモバイル用UIを隠しておく */
-.mobile-warning,
-.mobile-header,
-.sidebar-overlay,
-.close-sidebar-btn {
-    display: none;
-}
-
-/* =========================================
-   レスポンシブ (スマホ対応: 画面幅768px以下)
+   レスポンシブ (モバイル)
    ========================================= */
 @media (max-width: 768px) {
-    body {
-        padding: 0; /* スマホでは画面端ギリギリまで使うため余白を消す */
-        background-color: #f9f9f9;
-    }
+    body { padding: 0; background-color: #f9f9f9; }
 
-    /* PC推奨の警告バナーを表示 */
     .mobile-warning {
-        display: block;
-        background-color: var(--accent-orange);
-        color: white;
-        text-align: center;
-        padding: 8px;
-        font-size: 11px;
-        font-weight: bold;
+        display: flex; justify-content: center; align-items: center; gap: 10px;
+        background-color: var(--accent-orange); color: white;
+        padding: 8px; font-size: 11px; font-weight: bold; text-align: center;
+    }
+    .btn-pc-view {
+        padding: 4px 10px; background: #fff; color: var(--accent-orange); 
+        border: none; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
 
-    /* スマホ用の上部ヘッダー（ハンバーガーメニュー含む）を表示 */
     .mobile-header {
-        display: flex;
-        align-items: center;
-        background: #fff;
-        padding: 12px 15px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        position: sticky;
-        top: 0;
-        z-index: 900; /* モーダルより下、通常コンテンツより上の重なり順 */
-        border-bottom: 1px solid #eee;
+        display: flex; align-items: center; background: #fff;
+        padding: 12px 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        position: sticky; top: 0; z-index: var(--z-header); border-bottom: 1px solid #eee;
     }
-    
     .hamburger-btn {
-        background: none;
-        border: none;
-        padding: 0;
-        margin-right: 15px;
-        color: #333;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
+        background: none; border: none; padding: 0; margin-right: 15px;
+        color: #333; cursor: pointer; display: flex; align-items: center;
     }
-    
-    .mobile-header-title {
-        font-weight: bold;
-        font-size: 16px;
-        color: var(--accent-color);
-    }
+    .mobile-header-title { font-weight: bold; font-size: 16px; color: var(--accent-color); }
 
-    /* スマホ時は横並び（Flex）を解除し、縦積み */
-    .container {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 15px;
-        padding: 15px;
-    }
+    .container { flex-direction: column; align-items: stretch; gap: 15px; padding: 15px; }
 
-    /* --- スマホ時のサイドバー（ドロワーメニュー化） --- */
     .sidebar {
-        position: fixed;
-        top: 0;
-        left: -320px; /* 初期状態では画面外（左側）に隠しておく */
-        width: 280px;
-        height: 100vh !important; 
-        height: 100dvh !important; /* iOS SafariのURLバーを考慮した高さ指定 */
-        padding: 20px;
-        padding-bottom: 80px !important; 
-        background: var(--bg-color);
-        z-index: 1000;
-        transition: left 0.3s ease; /* スライドインのアニメーション */
-        box-shadow: 2px 0 15px rgba(0,0,0,0.2);
-        overflow-y: auto !important;
+        position: fixed; inset: 0 auto 0 0; width: 280px; height: 100dvh;
+        padding: 20px; padding-bottom: 80px; background: var(--bg-color); z-index: var(--z-sidebar);
+        transform: translateX(-100%); transition: transform 0.3s ease; box-shadow: 2px 0 15px rgba(0,0,0,0.2);
     }
-    
-    /* JSで .open クラスが付与されると画面内にスライド */
-    .sidebar.open {
-        left: 0;
-    }
+    .sidebar.open { transform: translateX(0); }
 
-    /* サイドバーを開いた時の背景の黒い半透明マスク */
     .sidebar-overlay {
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 990; /* サイドバー(1000)の下、ヘッダー(900)の上 */
-        opacity: 0;
-        pointer-events: none; /* 透明な時はクリックを貫通 */
-        transition: opacity 0.3s ease;
-        backdrop-filter: blur(2px); /* 背景をぼかすリッチな表現 */
+        display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        z-index: var(--z-overlay); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; backdrop-filter: blur(2px);
     }
-    
-    .sidebar-overlay.open {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
 
     .close-sidebar-btn {
-        display: block;
-        background: none;
-        border: none;
-        font-size: 32px;
-        text-align: right;
-        width: 100%;
-        cursor: pointer;
-        color: #999;
-        margin-bottom: 5px;
-        line-height: 1;
+        display: block; background: none; border: none; font-size: 32px;
+        text-align: right; width: 100%; cursor: pointer; color: #999; margin-bottom: 5px; line-height: 1;
     }
+    .main-content { width: 100%; }
 
-    .main-content {
-        width: 100%;
-    }
-
-    /* タブ・ボタン等のスマホ向け微調整 */
     .main-nav { gap: 5px; }
     .nav-btn { padding: 10px 5px; font-size: 12px; gap: 5px; }
 
-    /* 上部4つの統計ボックスを2列のグリッド */
-    .stats-row {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 10px;
-    }
-    .stats-row.daily-mode {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-    /* 日次モードの時は、「集計日数」「1日平均」のボックスを隠す */
-    .stats-row.daily-mode .stat-box.orange,
-    .stats-row.daily-mode .stat-box.green {
-        display: none !important;
-    }
-
+    .stats-row, .stats-row.daily-mode { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stats-row.daily-mode .stat-box.orange, .stats-row.daily-mode .stat-box.green { display: none; }
     .stat-box { padding: 15px 5px; }
     .stat-val { font-size: 22px; }
 
-    /* ランキング表のスマホ向け微調整（文字サイズ縮小、名前の省略表示など） */
-    .controls-bar {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        padding: 10px !important;
-        gap: 10px;
-    }
-    .view-title {
-        justify-content: center !important;
-        flex-wrap: wrap;
-        font-size: 16px !important;
-    }
-    select { width: 100% !important; }
+    .controls-bar { flex-direction: column; align-items: stretch; padding: 10px; gap: 10px; }
+    .view-title { justify-content: center; flex-wrap: wrap; font-size: 16px; }
+    select { width: 100%; }
     
-    .ranking-table td {
-        padding: 8px 4px !important;
-        font-size: 12px !important;
-    }
-    .ranking-table td:nth-child(2) {
-        width: 100px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis; /* 名前が長すぎる場合は「...」 */
-    }
-    .bar-txt {
-        width: 45px !important;
-        font-size: 11px !important;
-    }
+    .ranking-table td { padding: 8px 4px; font-size: 12px; }
+    .ranking-table td:nth-child(2) { width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-txt { width: 45px; font-size: 11px; }
 }
 
 /* =========================================
-   カードデザイン (各セクションの白枠)
+   UI コンポーネント (カード等)
    ========================================= */
-.card {
-    background: var(--card-bg);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    overflow: hidden;
-    flex-shrink: 0;
-}
+.card { background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; flex-shrink: 0; }
+.card-header { padding: 12px 15px; background: #fff; border-bottom: 1px solid var(--border-color); font-weight: bold; color: #444; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
 
-.card-header {
-    padding: 12px 15px;
-    background: #fff;
-    border-bottom: 1px solid var(--border-color);
-    font-weight: bold;
-    color: #444; 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-}
+/* インフォメーションエリア・デベロッパーエリア */
+.info-content { padding: 20px 15px; text-align: center; color: #444; line-height: 1.6; }
+.info-alert { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 8px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 15px; line-height: 1.4; }
+.info-alert span { font-size: 11px; font-weight: normal; }
+.info-date-wrap { border: none; padding-bottom: 0; margin-bottom: 5px; font-size: 13px; }
+.info-date-highlight { font-size: 16px; font-weight: bold; color: var(--accent-color); display: inline-block; margin-top: 5px; }
+.info-note { margin-bottom: 15px; color: #888; font-size: 11px; }
+
+.share-btn-wrap { display: flex; justify-content: center; }
+.btn-share-x { display: inline-flex; align-items: center; gap: 8px; background-color: #000; color: #fff; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold; transition: opacity 0.2s; }
+.btn-share-x:hover { opacity: 0.8; }
+
+.dev-link-wrap { padding: 15px; font-size: 13px; line-height: 1.6; color: #444; }
+.dev-link { text-decoration: none; color: var(--twitter-blue); font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
+
+/* コントロール・セレクトボックス周辺 */
+.record-controls { flex-direction: row; flex-wrap: wrap; gap: 10px; }
+.record-select { font-size: 15px; font-weight: bold; padding: 8px 12px; flex: 1; min-width: 200px; }
+.record-select.auto-width { flex: unset; min-width: auto; }
+.checkbox-wrap { display: flex; align-items: center; background: #f9f9f9; border: 1px solid #ddd; padding: 6px 12px; border-radius: 6px; }
+.checkbox-label { font-size: 13px; font-weight: bold; color: #444; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0; }
+.checkbox-input { cursor: pointer; margin: 0; }
+.record-period-info { width: 100%; text-align: right; font-size: 11px; color: #888; margin-top: 5px; padding-right: 5px; font-weight: bold; letter-spacing: 0.5px; }
 
 /* =========================================
    カレンダーウィジェット
    ========================================= */
 .calendar-widget { padding: 15px; }
+.cal-month-label { font-size: 12px; color: #888; }
 .cal-header { display: flex; align-items: center; margin-bottom: 10px; gap: 5px; }
 .cal-title { font-size: 14px; font-weight: bold; margin: 0 10px; flex-grow: 1; text-align: center; }
-
-.cal-nav {
-    cursor: pointer;
-    border: none;
-    background: #f0f0f0;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 12px;
-}
-
-.cal-latest {
-    margin-left: auto;
-    background: var(--accent-pink);
-    color: white;
-    font-weight: bold;
-}
-
-/* 7列均等のグリッドでカレンダーを表現 */
-.cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    text-align: center;
-}
+.cal-nav { cursor: pointer; border: none; background: #f0f0f0; border-radius: 4px; padding: 4px 8px; font-size: 12px; transition: background var(--transition-speed); }
+.cal-nav:hover { background: #e4e4e4; }
+.cal-latest { margin-left: auto; background: var(--accent-pink); color: white; }
+.cal-latest:hover { background: #d81b60; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
 .cal-head { font-size: 10px; color: #999; margin-bottom: 4px; }
-
-/* 日付マス */
-.cal-day {
-    aspect-ratio: 1; /* 幅と高さを常に1:1(正方形)に保つ */
-    border-radius: 6px;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    background: #f9f9f9;
-    color: #ccc;
-    transition: 0.1s;
-}
-
-/* ホバー時のポップアップ効果（データがない日は除外） */
-.cal-day:hover:not(.disabled) {
-    transform: scale(1.1);
-    z-index: 2;
-    border: 1px solid #666;
-}
-
-/* 選択中の日付 */
-.cal-day.active {
-    border: 2px solid #333;
-    background: #fff !important;
-    color: #333 !important;
-    font-weight: bold;
-}
-
-/* 範囲外、またはデータ0件の日付 */
-.cal-day.disabled {
-    opacity: 0.3;
-    pointer-events: none; /* クリック不可 */
-}
-
-/* 月初・月末の空白マス */
-.cal-day.empty {
-    background: transparent !important;
-    cursor: default;
-    pointer-events: none;
-}
-
-/* データが存在する日（シンプルで視認性の高いスタイル） */
-.cal-day.has-data {
-    background: #e0e0e0;
-    color: #333;
-    font-weight: 500;
-}
+.cal-day { aspect-ratio: 1; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9f9f9; color: #ccc; transition: transform 0.1s, background 0.2s, border 0.1s; }
+.cal-day:hover:not(.disabled) { transform: scale(1.1); z-index: 2; border: 1px solid #666; }
+.cal-day.active { border: 2px solid #333; background: #fff !important; color: #333 !important; font-weight: bold; }
+.cal-day.disabled { opacity: 0.3; pointer-events: none; }
+.cal-day.empty { background: transparent !important; cursor: default; pointer-events: none; }
+.cal-day.has-data { background: #e0e0e0; color: #333; font-weight: 500; }
 
 /* =========================================
-   リスト (月別アーカイブ・期間)
+   リスト・統計ボックス・テーブル
    ========================================= */
 .archive-list { list-style: none; padding: 0; margin: 0; }
-.archive-item {
-    padding: 10px 15px;
-    border-bottom: 1px solid #f0f0f0;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-    transition: 0.2s;
-}
+.archive-item { padding: 10px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; transition: var(--transition-speed); }
 .archive-item:hover { background: #f9f9f9; color: var(--accent-color); }
+.archive-item.active { background: #eaf6fd; color: var(--accent-color); font-weight: bold; border-left: 4px solid var(--accent-color); }
+.archive-count { background: #e0e0e0; padding: 3px 10px; border-radius: 12px; font-size: 12px; color: #222; font-weight: 800; }
 
-/* 選択中の期間リストアイテム */
-.archive-item.active {
-    background: #eaf6fd;
-    color: var(--accent-color);
-    font-weight: bold;
-    border-left: 4px solid var(--accent-color);
-}
-.archive-count {
-    background: #e0e0e0;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    color: #222;
-    font-weight: 800;
-}
-
-/* =========================================
-   上部統計エリア (4つのボックス)
-   ========================================= */
 .main-nav { display: flex; gap: 15px; margin-bottom: 20px; }
-
-/* 画面切り替えタブ */
-.nav-btn {
-    flex: 1;
-    padding: 15px;
-    border: none;
-    background: white;
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    color: #666;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
+.nav-btn { flex: 1; padding: 15px; border: none; background: white; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold; color: #666; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: background var(--transition-speed), color var(--transition-speed); }
+.nav-btn:hover { background: #f9f9f9; }
 .nav-btn.active { background: var(--accent-color); color: white; }
 
-.stats-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    margin-bottom: 20px;
-}
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
 .stats-row.daily-mode { grid-template-columns: repeat(2, 1fr); }
-.stats-row.daily-mode .stat-box.orange,
-.stats-row.daily-mode .stat-box.green { display: none; }
+.stats-row.daily-mode .stat-box.orange, .stats-row.daily-mode .stat-box.green { display: none; }
 
-/* 個別の統計ボックス */
-.stat-box {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    position: relative; /* 擬似要素(::after)の基準位置 */
-}
-
-/* ボックス下部を彩るアクセントカラーのライン */
-.stat-box::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: #eee;
-}
+.stat-box { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
+.stat-box::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #eee; }
 .stat-box.blue::after { background: var(--accent-color); }
 .stat-box.pink::after { background: var(--accent-pink); }
 .stat-box.orange::after { background: var(--accent-orange); }
 .stat-box.green::after { background: var(--accent-green); }
 
 .stat-label { font-size: 12px; color: #555; display: block; margin-bottom: 8px; font-weight: 800; }
-.stat-val {
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    font-weight: bold;
-    color: #222;
-    overflow: hidden;
-    word-break: break-all;
-}
-/* 同率1位が複数人いる場合のテキスト縮小 */
+.stat-val { height: 50px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #222; overflow: hidden; word-break: break-all; }
 .stat-val.multi { font-size: 15px; line-height: 1.3; }
 .stat-sub { font-size: 14px; color: #333; margin-top: 5px; font-weight: 800; }
 
-/* =========================================
-   ビュー内のコントロールバー
-   ========================================= */
-.controls-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-}
+.controls-bar { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
 .view-title { font-size: 18px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 10px; }
-.title-nav-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #999; padding: 0 5px; }
+.title-nav-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #999; padding: 0 5px; transition: color var(--transition-speed); }
+.title-nav-btn:hover { color: var(--accent-color); }
 select { padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; }
 
-/* =========================================
-   ランキング表 (データタブ & 記録タブ)
-   ========================================= */
 .ranking-table { width: 100%; border-collapse: collapse; }
-.ranking-table td {
-    padding: 12px 20px;
-    border-bottom: 1px solid #f0f0f0;
-    cursor: pointer;
-    font-size: 14px;
-    vertical-align: middle;
-}
+.ranking-table td { padding: 12px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 14px; vertical-align: middle; transition: background var(--transition-speed); }
 .ranking-table tr:hover { background: var(--hover-bg); }
-
-/* 順位バッジ */
-.rank-num {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    line-height: 24px;
-    text-align: center;
-    border-radius: 50%;
-    background: #eee;
-    font-size: 12px;
-    font-weight: bold;
-    color: #555;
-}
-/* Top3はメダルカラー */
+.rank-num { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%; background: #eee; font-size: 12px; font-weight: bold; color: #555; }
 .rank-1 { background: #ffd700; color: white; }
 .rank-2 { background: #c0c0c0; color: white; }
 .rank-3 { background: #c47022; color: white; }
 
-/* グラフバー（インライン） */
 .bar-wrap { display: flex; align-items: center; gap: 10px; width: 100%; }
 .bar-bg { flex-grow: 1; background: #f0f0f0; height: 10px; border-radius: 5px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 5px; transition: width 0.5s; } /* アニメーションで伸びる */
+.bar-fill { height: 100%; border-radius: 5px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); } 
 .bar-txt { font-weight: bold; font-size: 13px; width: 60px; text-align: right; }
 
 /* =========================================
-   メンバー一覧グリッド (メンバータブ)
+   メンバーグリッド & バッジ
    ========================================= */
-.grid-container {
-    display: grid;
-    /* 画面幅に応じて列数を自動調整（1つのカードの最小幅は100px） */
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 10px;
-    padding: 10px;
-}
-
-/* メンバー個別カード */
-.m-card {
-    background: white;
-    border: 1px solid #eee;
-    border-radius: 10px;
-    padding: 12px 5px;
-    text-align: center;
-    cursor: pointer;
-    transition: 0.2s;
-    /* メンバー固有のカラー(--c)を上部のボーダーとして使用 */
-    border-top: 3px solid var(--c);
-}
-.m-card:hover {
-    transform: translateY(-3px); /* ふわっと浮くアニメーション */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    border-color: var(--accent-color);
-}
-
-.m-icon {
-    width: 40px;
-    height: 40px;
-    background: #f5f5f5;
-    border-radius: 50%;
-    margin: 0 auto 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    color: #ccc;
-    border: 2px solid var(--c);
-}
+.grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; padding: 10px; }
+.m-card { background: white; border: 1px solid #eee; border-radius: 10px; padding: 12px 5px; text-align: center; cursor: pointer; transition: transform var(--transition-speed), box-shadow var(--transition-speed), border-color var(--transition-speed); border-top: 3px solid var(--c); }
+.m-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: var(--accent-color); }
+.m-icon { width: 40px; height: 40px; background: #f5f5f5; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #ccc; border: 2px solid var(--c); }
 .m-name { font-weight: bold; font-size: 12px; }
 
-/* Twitter(X) 検索リンク */
-.x-link {
-    text-decoration: none;
-    color: var(--twitter-blue);
-    font-size: 10px;
-    font-weight: bold;
-    transition: 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px 8px;
-    border-radius: 12px;
-    background: #f0f8ff;
-    margin-top: 6px;
-    word-break: break-all;
-}
+.x-link { text-decoration: none; color: var(--twitter-blue); font-size: 10px; font-weight: bold; transition: background var(--transition-speed), color var(--transition-speed); display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 12px; background: #f0f8ff; margin-top: 6px; word-break: break-all; }
 .x-link:hover { background: var(--twitter-blue); color: white; }
 
-.gen-header {
-    font-size: 15px;
-    font-weight: bold;
-    color: var(--accent-color);
-    border-bottom: 2px solid #f0f0f0;
-    padding: 0 15px 5px;
-    margin-bottom: 5px;
-}
+.gen-header { font-size: 15px; font-weight: bold; color: var(--accent-color); border-bottom: 2px solid #f0f0f0; padding: 0 15px 5px; margin-bottom: 5px; }
+
+.updating-badge { display: inline-block; background: #ff4757; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; font-weight: bold; vertical-align: middle; animation: pulse 1.5s infinite ease-in-out; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(0.95); } }
 
 /* =========================================
-   更新中バッジ・アニメーション (記録タブ用)
+   モーダル
    ========================================= */
-.updating-badge {
-    display: inline-block;
-    background: #ff4757;
-    color: white;
-    font-size: 9px;
-    padding: 1px 4px;
-    border-radius: 3px;
-    margin-left: 5px;
-    font-weight: bold;
-    vertical-align: middle;
-    animation: pulse 1.5s infinite; /* 点滅アニメーション */
-}
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: var(--z-overlay); backdrop-filter: blur(2px); }
+.modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 95%; max-width: 950px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: var(--z-modal); max-height: 95vh; overflow-y: auto; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+.close-btn { border: none; background: none; font-size: 28px; cursor: pointer; color: #999; transition: color var(--transition-speed); }
+.close-btn:hover { color: #333; }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
-}
-
-/* =========================================
-   モーダル (ポップアップ画面)
-   ========================================= */
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 999;
-    backdrop-filter: blur(2px);
-}
-
-/* モーダル本体 */
-.modal {
-    display: none;
-    position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%); /* 画面中央に配置 */
-    background: white;
-    width: 95%; max-width: 950px;
-    border-radius: 16px;
-    padding: 25px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    z-index: 1000;
-    max-height: 95vh;
-    overflow-y: auto; /* 画面に収まらない場合はスクロール可能 */
-}
-
-.modal-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 15px;
-}
-.close-btn { border: none; background: none; font-size: 28px; cursor: pointer; color: #999; }
-
-/* メンバー切り替えナビゲーション（◀ 名前 ▶） */
 .modal-nav-row { display: grid; grid-template-columns: 50px 1fr 50px; gap: 0; align-items: center; width: 100%; }
 .modal-title-col { text-align: center; overflow: hidden; }
-
-.nav-arrow {
-    border: none;
-    background: #f5f5f5;
-    border-radius: 50%;
-    width: 44px; height: 44px;
-    cursor: pointer;
-    font-weight: bold;
-    color: #555;
-    display: flex; align-items: center; justify-content: center;
-    transition: 0.2s;
-    font-size: 18px;
-    margin: 0 auto;
-}
+.modal-subtitle { font-size: 11px; color: #888; }
+.nav-arrow { border: none; background: #f5f5f5; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; font-weight: bold; color: #555; display: flex; align-items: center; justify-content: center; transition: background var(--transition-speed), color var(--transition-speed); font-size: 18px; margin: 0 auto; }
 .nav-arrow:hover { background: #e0e0e0; color: #333; }
 
-/* グラフ表示領域 */
+/* モーダル内コントロール・統計 */
+.modal-period-controls { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.modal-period-btn { padding: 4px 10px; font-size: 12px; border-radius: 4px; }
+.modal-select { min-width: 160px; margin: 0; }
+.modal-close-btn-sub { margin-left: 4px; }
+
+.modal-stats-row { margin-bottom: 0; grid-template-columns: repeat(4, 1fr); }
+.modal-stat-box { padding: 10px; box-shadow: none; background: #f9f9f9; }
+.modal-stat-val { font-size: 20px; }
+
 .chart-box { height: 420px; margin-top: 20px; position: relative; }
 
-/* 日次/月次ランキング用モーダル（小さめサイズ） */
-#dailyModal { z-index: 1001; width: 90%; max-width: 600px; }
+#dailyModal { z-index: calc(var(--z-modal) + 1); width: 90%; max-width: 600px; }
 .daily-list-wrap { max-height: 60vh; overflow-y: auto; }
 
-/* JS制御による画面切り替え用のクラス */
+/* JS用ユーティリティ */
 .app-view { display: none; }
 .app-view.active { display: block; }
 #recordContentArea { padding: 0; }
+
+/* =========================================
+   カレンダーの曜日色分け（追加分）
+   ========================================= */
+/* ヘッダーの曜日（月〜日）の色分け。6番目が土曜、7番目が日曜 */
+.cal-grid .cal-head:nth-child(6) { color: #3498db; }
+.cal-grid .cal-head:nth-child(7) { color: #e74c3c; }
+
+/* 日付マスの色分け（データがない薄い状態） */
+.cal-day.sat { color: #a9cce3; } /* 薄い青 */
+.cal-day.sun { color: #f5b7b1; } /* 薄い赤 */
+
+/* 日付マスの色分け（データがある濃い状態） */
+.cal-day.has-data.sat { color: #2980b9; } /* 濃い青 */
+.cal-day.has-data.sun { color: #c0392b; } /* 濃い赤 */
