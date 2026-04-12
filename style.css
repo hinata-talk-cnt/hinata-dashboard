@@ -147,7 +147,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .info-note { margin-bottom: 15px; color: #888; font-size: 11px; }
 
 .share-btn-wrap { display: flex; justify-content: center; }
-.btn-share-x { display: inline-flex; align-items: center; gap: 8px; background-color: #000; color: #fff; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold; transition: opacity 0.2s; }
+.btn-share-x { display: inline-flex; align-items: center; gap: 6px; background-color: #000; color: #fff; padding: 6px 12px; border-radius: 20px; text-decoration: none; font-size: 11px; font-weight: bold; transition: opacity 0.2s; }
 .btn-share-x:hover { opacity: 0.8; }
 
 .dev-link-wrap { padding: 15px; font-size: 13px; line-height: 1.6; color: #444; }
