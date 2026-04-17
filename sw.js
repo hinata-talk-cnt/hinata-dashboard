@@ -27,7 +27,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                // ネットワークから取得できたら、ついでにキャッシュも最新に更新しておく
+                // ネットワークから取得できたら、ついでにキャッシュも最新に更新
                 if (response && response.status === 200 && response.type === 'basic') {
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME).then(cache => {

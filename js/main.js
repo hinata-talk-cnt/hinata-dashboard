@@ -219,7 +219,7 @@ function initApp() {
     if (state.latestValidDateStr) selectPeriod('day', state.latestValidDateStr);
     else if (sortedMonths.length > 0) selectPeriod('month', sortedMonths[0]);
     
-    // メンバータブのアイコン一覧も初期描画しておく
+    // メンバータブのアイコン一覧も初期描画
     renderMemberCatalog();
 
     const latestDateDisplay = document.getElementById('latestDateDisplay');
@@ -240,7 +240,7 @@ function initApp() {
 export function selectPeriod(type, value) {
     state.currentFilter = { type, value };
     
-    // 日次・月次が選ばれた場合は、カレンダーの表示月も連動させる
+    // 日次・月次が選ばれた場合は、カレンダーの表示月も連動
     if (type === 'day' || type === 'month') { 
         const p = value.split('/').map(Number); 
         state.calYear = p[0]; 
@@ -256,11 +256,11 @@ export function selectPeriod(type, value) {
         document.body.classList.remove('no-scroll'); 
     }
     
-    // 期間を変更した際は自動的に「データタブ」に切り替える
+    // 期間を変更した際は自動的に「データタブ」に切り替え
     setAppMode('analytics');
     
     // requestAnimationFrame を使うことで、ブラウザの描画サイクルに合わせて処理を実行し、
-    // 重いレンダリング処理によるUIのフリーズ（カクつき）を軽減する
+    // 重いレンダリング処理によるUIのフリーズ（カクつき）を軽減
     requestAnimationFrame(() => { 
         updateDashboard(); 
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
@@ -411,7 +411,7 @@ function bindEvents() {
     document.getElementById('genSelector2').onchange = renderMemberCatalog;
     document.getElementById('recordTypeSelector').onchange = renderRecordPage;
 
-    // ★ 5期生比較チェックボックスのイベントリスナーを追加
+    // 5期生比較チェックボックスのイベントリスナー
     const recordSince5thGen = document.getElementById('recordSince5thGen');
     if (recordSince5thGen) recordSince5thGen.onchange = renderRecordPage;
 
@@ -486,7 +486,7 @@ function shiftPeriod(offset) {
  * @param {number} offset - 移動量（1 または -1）
  */
 function switchModalMember(offset) {
-    // 現在のタブが「記録」や「データ」ならランキング順を、「メンバー」なら期生順（カタログ順）を参照する
+    // 現在のタブが「記録」や「データ」ならランキング順を、「メンバー」なら期生順（カタログ順）を参照
     const targetList = state.currentAppMode === 'analytics' || state.currentAppMode === 'records' ? state.rankingList : state.catalogList;
     if (!targetList || targetList.length === 0) return;
     
@@ -494,7 +494,7 @@ function switchModalMember(offset) {
     if (currentIndex === -1) return;
     
     let newIndex = currentIndex + offset;
-    // リストの端に到達したらループさせる
+    // リストの端に到達したらループ
     if (newIndex < 0) newIndex = targetList.length - 1;
     if (newIndex >= targetList.length) newIndex = 0;
     
@@ -518,7 +518,7 @@ function applyView() {
         if (toggleBtn) toggleBtn.innerHTML = '📱 スマホ表示';
         if (warningText) warningText.innerHTML = '💡 現在PCレイアウトで表示中';
         
-        // ★重要：画面幅が1200pxになるとCSSでバナーが消えてしまうのを防ぐ
+        // 画面幅が1200pxになるとCSSでバナーが消えてしまうのを防ぐ
         if (warningBanner) warningBanner.style.display = 'flex'; 
     } else {
         // スマホ表示モード（通常）
@@ -548,7 +548,7 @@ if (toggleBtn) {
 // --------------------------------------------------
 // HTMLのタグ内（onclick属性など）から直接呼び出している関数は、
 // ES Modulesのスコープ内に閉じ込められてしまうとエラーになるため、
-// 明示的に window オブジェクト（グローバル）に登録してアクセス可能にしています。
+// 明示的に window オブジェクト（グローバル）に登録してアクセス可能に
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.openMonthlyRankingModal = openMonthlyRankingModal;

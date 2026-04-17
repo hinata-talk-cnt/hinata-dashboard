@@ -1,7 +1,7 @@
 import { state, formatDateStr } from './store.js';
 
 /**
- * サイドバーのミニカレンダーを構築・描画する関数。
+ * サイドバーのミニカレンダーを構築・描画する関数
  * 現在の state.calYear と state.calMonth に基づいて、該当月の日付マスを生成
  */
 export const renderCalendarWidget = () => {
@@ -61,7 +61,7 @@ export const renderCalendarWidget = () => {
         
         let classList = "cal-day";
         
-        // ★追加：曜日の判定 (0: 日曜, 6: 土曜)
+        // 曜日の判定 (0: 日曜, 6: 土曜)
         const dayOfWeek = targetDate.getDay();
         if (dayOfWeek === 0) classList += " sun";
         else if (dayOfWeek === 6) classList += " sat";

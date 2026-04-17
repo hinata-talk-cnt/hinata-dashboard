@@ -1,7 +1,7 @@
 import { state, genKanji, isDateInPeriod, isActiveMemberInPeriod, formatDateStr } from './store.js';
 
 // ==================================================
-// ★ 記録ページ用のキャッシュ（メモ化）変数
+// 記録ページ用のキャッシュ（メモ化）変数
 // ==================================================
 let recordCache = {
     isSince5thGen: null, // キャッシュした時のチェックボックスの状態
@@ -12,7 +12,7 @@ let recordCache = {
 };
 
 /**
- * 「データ」タブのメインビュー（ランキング表）を描画する関数。
+ * 「データ」タブのメインビュー（ランキング表）を描画する関数
  */
 export const renderRankingView = () => {
     const genSel = document.getElementById('genSelector');
@@ -82,7 +82,7 @@ export const renderRankingView = () => {
 };
 
 /**
- * 「メンバー」タブのカタログ（一覧）ビューを描画する関数。
+ * 「メンバー」タブのカタログ（一覧）ビューを描画する関数
  */
 export const renderMemberCatalog = () => {
     const genSelector = document.getElementById('genSelector2');
@@ -133,7 +133,7 @@ export const renderMemberCatalog = () => {
 };
 
 /**
- * 「記録」タブの各種ランキングを描画する関数。
+ * 「記録」タブの各種ランキングを描画する関数
  */
 export const renderRecordPage = () => {
     const type = document.getElementById('recordTypeSelector').value;
@@ -143,7 +143,7 @@ export const renderRecordPage = () => {
     // ==================================================
     // 1. キャッシュの判定と重い計算処理のスキップ
     // ==================================================
-    // 5期生チェックボックスの状態が変わった時だけ、再計算を行う
+    // 5期生チェックボックスの状態が変わった時だけ、再計算
     if (recordCache.isSince5thGen !== isSince5thGen || !recordCache.statsMap) {
         
         let baseMinDateObj = state.minDateObj;
@@ -317,7 +317,7 @@ export const renderRecordPage = () => {
         const sY = baseMinDateObj.getFullYear(), sM = baseMinDateObj.getMonth() + 1, sD = String(baseMinDateObj.getDate()).padStart(2,'0');
         const eY = state.maxDateObj.getFullYear(), eM = state.maxDateObj.getMonth() + 1, eD = String(state.maxDateObj.getDate()).padStart(2,'0');
         
-        // ★ キャッシュに保存
+        // キャッシュに保存
         recordCache = {
             isSince5thGen,
             statsMap,

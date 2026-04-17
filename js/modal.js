@@ -20,7 +20,7 @@ export const openMonthlyRankingModal = (ym) => {
         }
     });
     
-    // 降順にソートして配列化 (Object.entriesでスマートに変換)
+    // 降順にソートして配列化
     const ranking = Object.entries(memberTotals)
         .map(([name, count]) => ({ name, count, color: state.memberMap[name]?.color || '#ccc' }))
         .sort((a, b) => b.count - a.count);
