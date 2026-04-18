@@ -215,10 +215,43 @@ function initApp() {
     genSel2.innerHTML = genHtml;
 
     // --- アプリの初期表示 ---
-    // 最新の日付データがあれば「日次」モードで表示。なければ最新「月」を表示。
-    if (state.latestValidDateStr) selectPeriod('day', state.latestValidDateStr);
-    else if (sortedMonths.length > 0) selectPeriod('month', sortedMonths[0]);
-    
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const tParam = urlParams.get('t');
+    const vParam = urlParams.get('v');
+
+    // 1. まずデフォルトの集計期間をセット（ここで一旦データタブとして初期化されます）
+    if (tParam && vParam) {
+        selectPeriod(tParam, vParam);
+    } else if (state.latestValidDateStr) {
+        selectPeriod('day', state.latestValidDateStr);
+    } else if (sortedMonths.length > 0) {
+        selectPeriod('month', sortedMonths[0]);
+    }
+
+    // 2. URLの指示に合わせて、メンバーや記録のタブ・状態を復元して上書き
+    if (tabParam === 'members') {
+        setAppMode('members');
+        const memParam = urlParams.get('mem');
+        if (memParam && state.memberMap[memParam]) {
+            // モーダル（詳細画面）を開いた状態で復元
+            openModal(state.memberMap[memParam], vParam || 'all');
+        } else {
+            // 期生の絞り込み状態を復元
+            const genParam = urlParams.get('gen');
+            if (genParam) document.getElementById('genSelector2').value = genParam;
+        }
+    } else if (tabParam === 'records') {
+        setAppMode('records');
+        const rtParam = urlParams.get('rt');
+        const fifthParam = urlParams.get('5th');
+        if (rtParam) document.getElementById('recordTypeSelector').value = rtParam;
+        if (fifthParam === '1') {
+            const cb = document.getElementById('recordSince5thGen');
+            if (cb) cb.checked = true;
+        }
+    }
+
     // メンバータブのアイコン一覧も初期描画
     renderMemberCatalog();
 
@@ -540,6 +573,85 @@ if (toggleBtn) {
         isPCView = !isPCView; // 状態を反転
         localStorage.setItem('isPCView', isPCView); // 記憶させる
         applyView(); // 画面に反映
+    });
+}
+
+// シェアボタンを押した時の処理
+const shareBtn = document.getElementById('dynamicShareBtn');
+if (shareBtn) {
+    shareBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const mode = state.currentAppMode || 'analytics';
+        let shareParams = new URLSearchParams();
+        let titleText = "日向坂46メッセージ集計";
+
+        if (mode === 'analytics') {
+            const type = state.currentFilter.type;
+            const val = state.currentFilter.value;
+            const pageTitle = document.getElementById('pageTitle').innerText;
+
+            titleText += ` [${pageTitle}]`;
+
+            if (type !== 'all') {
+                shareParams.append('tab', 'analytics');
+                shareParams.append('t', type);
+                shareParams.append('v', val);
+            }
+
+        } else if (mode === 'members') {
+            const modal = document.getElementById('modalOverlay');
+            if (modal && modal.style.display === 'flex' && state.currentModalMember) {
+                titleText += ` [${state.currentModalMember.name} 詳細]`;
+                shareParams.append('tab', 'members');
+                shareParams.append('mem', state.currentModalMember.name);
+                const pVal = document.getElementById('modalPeriodSelector').value;
+                if (pVal && pVal !== 'all') shareParams.append('v', pVal);
+            } else {
+                titleText += ` [メンバー一覧]`;
+                shareParams.append('tab', 'members');
+                const genVal = document.getElementById('genSelector2').value;
+                if (genVal !== 'all') shareParams.append('gen', genVal);
+            }
+
+        } else if (mode === 'records') {
+            const rtSelect = document.getElementById('recordTypeSelector');
+            const selectedOption = rtSelect.options[rtSelect.selectedIndex];
+            
+            // 1. 選ばれた項目のテキストから絵文字を除去（前後の空白も削除）
+            const rawText = selectedOption.text;
+            const rtText = rawText.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '').trim();
+
+            // 2. 選ばれた項目の親（optgroup）のラベルを取得して「日次記録」などを抽出
+            let category = "記録";
+            const parentOptGroup = selectedOption.parentElement;
+            if (parentOptGroup && parentOptGroup.tagName === 'OPTGROUP') {
+                // "▼ 日次記録 (Daily)" などの文字から、"▼" や "(Daily)" の部分を削り落として綺麗にする
+                category = parentOptGroup.label.replace(/▼\s*|\s*\(.*?\)/g, '').trim();
+            }
+            
+            const cb = document.getElementById('recordSince5thGen');
+            const is5thOnly = (cb && cb.checked);
+
+            // 「[日次記録: 送信件数]」のようにフォーマット
+            titleText += ` [${category}: ${rtText}${is5thOnly ? ' (5期生以降)' : ''}]`;
+            shareParams.append('tab', 'records');
+            shareParams.append('rt', rtSelect.value);
+            if (is5thOnly) shareParams.append('5th', '1');
+        }
+
+        const baseUrl = "https://hinata-talk-cnt.com/";
+        const paramStr = shareParams.toString();
+        const shareUrl = paramStr ? `${baseUrl}?${paramStr}` : baseUrl;
+
+        // Xの投稿文作成（記録タブ時は全体から絵文字が消えるよう置換）
+        let finalText = `${titleText}\n${shareUrl}\n\n#日向坂46メッセージ集計垢\n@hinata_talk_cnt`;
+        if (mode === 'records') {
+            finalText = finalText.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '');
+        }
+
+        const encodedText = encodeURIComponent(finalText);
+        window.open(`https://x.com/intent/tweet?text=${encodedText}`, '_blank', 'noopener,noreferrer');
     });
 }
 
