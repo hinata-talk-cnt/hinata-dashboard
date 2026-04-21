@@ -61,6 +61,15 @@
 </head>
 <body>
 
+<div id="passwordGate" style="position: fixed; inset: 0; background: #f0f4f8; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <h2 style="color: #333; margin-bottom: 20px;">🔒 アクセス制限</h2>
+    <div>
+        <input type="password" id="passwordInput" placeholder="合言葉を入力" style="padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+        <button onclick="checkPassword()" style="padding: 12px 20px; font-size: 16px; background: #4b89dc; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px;">認証</button>
+    </div>
+    <p id="errorMsg" style="color: #e74c3c; margin-top: 15px; font-weight: bold;"></p>
+</div>
+
 <div id="loadingMask">
     <div class="spinner"></div>
     <div class="loading-text">データを読み込んでいます...</div>

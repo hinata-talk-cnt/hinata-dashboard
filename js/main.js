@@ -3,6 +3,35 @@ import { renderCalendarWidget, shiftCal } from './calendar.js';
 import { renderRankingView, renderMemberCatalog, renderRecordPage } from './views.js';
 import { openModal, closeModal, openMonthlyRankingModal, openDailyRankingModal, updateModalContent, shiftModalPeriod } from './modal.js';
 
+const CORRECT_HASH = "1fa127576b8271eccb4058005b981eeaca14c068dc2e863d8b2f8f32c91ba277";
+
+async function checkPassword() {
+    const input = document.getElementById('passwordInput').value;
+    const errorMsg = document.getElementById('errorMsg');
+    
+    if (!input) return;
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (hashHex === CORRECT_HASH) {
+        document.getElementById('passwordGate').style.display = 'none';
+        sessionStorage.setItem('isAuthorized', 'true'); 
+    } else {
+        errorMsg.innerText = "合言葉が違います";
+    }
+}
+
+if (sessionStorage.getItem('isAuthorized') === 'true') {
+    const gate = document.getElementById('passwordGate');
+    if (gate) gate.style.display = 'none';
+}
+
+window.checkPassword = checkPassword;
+
 // キャッシュバスティング用：ファイルの読み込み時に常に最新のデータを取得するためのタイムスタンプ
 const DATA_VER = new Date().getTime();
 
