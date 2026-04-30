@@ -141,11 +141,18 @@ export const renderRecordPage = () => {
     const isSince5thGen = document.getElementById('recordSince5thGen')?.checked || false;
 
     // ==================================================
+    // ★ 追加：同率を含めて上位10位までを抽出するヘルパー関数
+    // ==================================================
+    const applyTop10WithTies = (list, valKey) => {
+        if (list.length <= 10) return list;
+        const threshold = list[9][valKey]; // 10番目の要素のスコアを取得
+        return list.filter(item => item[valKey] >= threshold); // そのスコア以上の要素をすべて残す
+    };
+
+    // ==================================================
     // 1. キャッシュの判定と重い計算処理のスキップ
     // ==================================================
-    // 5期生チェックボックスの状態が変わった時だけ、再計算
     if (recordCache.isSince5thGen !== isSince5thGen || !recordCache.statsMap) {
-        
         let baseMinDateObj = state.minDateObj;
         if (isSince5thGen) {
             const gen5Members = state.allMembers.filter(m => String(m.gen) === '5');
@@ -177,7 +184,9 @@ export const renderRecordPage = () => {
                 completedTotal: 0,
                 streakStart: null, streakEnd: null, maxStreakStart: null, maxStreakEnd: null,
                 currentPerfectStreak: 0, maxPerfectStreak: 0, perfectStreakStart: null, maxPerfectStart: null, maxPerfectEnd: null,
-                actualStartDate: m.actualStartDate, endDate: m.actualEndDate, isGraduated: !!m.gradDate, logs: {}
+                actualStartDate: m.actualStartDate, endDate: m.actualEndDate, 
+                firstLogDate: m.firstLogDate, // ★ 追加：アプリの初回送信日
+                isGraduated: !!m.gradDate, logs: {}
             };
         });
 
@@ -231,7 +240,6 @@ export const renderRecordPage = () => {
             }
         });
 
-        // 月順走査フェーズ（皆勤賞）
         let currY = baseMinDateObj.getFullYear(), currM = baseMinDateObj.getMonth();
         while (currY < compY || (currY === compY && currM <= compM)) {
             const daysInMonth = new Date(currY, currM + 1, 0).getDate();
@@ -278,7 +286,6 @@ export const renderRecordPage = () => {
             currM++; if (currM > 11) { currM = 0; currY++; }
         }
 
-        // アクティブ期間と連続日数の算出
         state.allMembers.forEach(m => {
             const s = statsMap[m.name];
             if (!s) return; 
@@ -313,29 +320,28 @@ export const renderRecordPage = () => {
             });
         });
 
-        // 期間テキストの生成
         const sY = baseMinDateObj.getFullYear(), sM = baseMinDateObj.getMonth() + 1, sD = String(baseMinDateObj.getDate()).padStart(2,'0');
         const eY = state.maxDateObj.getFullYear(), eM = state.maxDateObj.getMonth() + 1, eD = String(state.maxDateObj.getDate()).padStart(2,'0');
         
-        // キャッシュに保存
         recordCache = {
             isSince5thGen,
             statsMap,
             filteredLogs,
             compYM, compY, compM,
+            dateStrList, 
             periodText: {
-                monthly: `📅 対象期間: ${sY}年${sM}月 ～ ${compY}年${compM + 1}月${!isEndOfMonth ? ` (※${eM}月は進行中のため除外)` : ''}`,
+                monthly: `📅 対象期間: ${sY}年${sM}月 ～ ${compY}年${compM + 1}月${!isEndOfMonth ? ` (※当月は除外)` : ''}`,
                 daily: `📅 対象期間: ${sY}/${String(sM).padStart(2,'0')}/${sD} ～ ${eY}/${String(eM).padStart(2,'0')}/${eD}`
             }
         };
     }
 
     // ==================================================
-    // 2. キャッシュされたデータを使って高速に表示を作成
+    // 2. キャッシュされたデータを使って表示を作成
     // ==================================================
-    const { statsMap, filteredLogs, compYM, compY, compM, periodText } = recordCache;
+    const { statsMap, filteredLogs, compYM, compY, compM, periodText, dateStrList } = recordCache;
 
-    const isMonthlyRecord = ['monthly_max', 'monthly_wins', 'average_monthly', 'perfect_months'].includes(type);
+    const isMonthlyRecord = ['monthly_max', 'monthly_wins', 'average_monthly', 'perfect_months', 'group_monthly_max'].includes(type);
     const activePeriodText = isMonthlyRecord ? periodText.monthly : periodText.daily;
 
     const infoEndDateEl = document.getElementById('info-end-date');
@@ -349,6 +355,7 @@ export const renderRecordPage = () => {
         
         let modeHtml = ['total', 'active_rate'].includes(type) ? "<span style='color:#FF9F43;'>通算記録</span>"
                      : isMonthlyRecord ? "<span style='color:#28c76f;'>月間記録</span>"
+                     : type.startsWith('group') ? "<span style='color:#4b89dc;'>グループ記録</span>" // ←紫から水色に変更
                      : "<span style='color:#4b89dc;'>日次記録</span>";
 
         infoEl.innerHTML = `<span>${modeHtml}</span><span>${activePeriodText}</span>`;
@@ -359,8 +366,123 @@ export const renderRecordPage = () => {
     let unit = "", isDecimal = false;
     let trHtml = "";
 
-    // 個別ランキングのHTML生成処理
-    if (type === 'wins') {
+    // --------------------------------------------------
+    // グループ記録の計算ロジック
+    // --------------------------------------------------
+    if (type === 'group_daily_max') {
+        const dailyGroupTotal = {};
+        filteredLogs.forEach(l => {
+            if (statsMap[l.name]) {
+                dailyGroupTotal[l.date] = (dailyGroupTotal[l.date] || 0) + (Number(l.count) || 0);
+            }
+        });
+        
+        dataList = Object.entries(dailyGroupTotal)
+            .map(([date, count]) => ({ title: date, count: count }))
+            .sort((a,b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count'); // ★ 同率考慮のTop10
+
+        if(dataList.length) maxVal = dataList[0].count;
+        let rank = 1;
+        trHtml = dataList.map((r, i) => {
+            if(i > 0 && r.count < dataList[i-1].count) rank = i + 1;
+            const rc = rank <= 3 ? `rank-${rank}` : ''; 
+            const w = (maxVal > 0) ? (r.count/maxVal)*100 : 0;
+            return `
+                <tr onclick="window.openDailyRankingModal('${r.title}')">
+                    <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
+                    <td style="width:140px"><div style="font-weight:bold">${r.title}</div></td>
+                    <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">${r.count.toLocaleString()}</div></div></td>
+                </tr>`;
+        }).join('');
+
+    } else if (type === 'group_monthly_max') {
+        const monthlyGroupTotal = {};
+        filteredLogs.forEach(l => {
+            if(!statsMap[l.name]) return; 
+            const [yStr, mStr] = l.date.split('/');
+            if ((Number(yStr) * 100 + (Number(mStr) - 1)) > compYM) return; 
+            const ym = `${yStr}/${mStr}`;
+            monthlyGroupTotal[ym] = (monthlyGroupTotal[ym] || 0) + (Number(l.count) || 0);
+        });
+
+        dataList = Object.entries(monthlyGroupTotal)
+            .map(([ym, count]) => ({ title: ym, count: count }))
+            .sort((a,b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count'); // ★ 同率考慮のTop10
+
+        if(dataList.length) maxVal = dataList[0].count;
+        let rank = 1;
+        trHtml = dataList.map((r, i) => {
+            if(i > 0 && r.count < dataList[i-1].count) rank = i + 1;
+            const rc = rank <= 3 ? `rank-${rank}` : ''; 
+            const w = (maxVal > 0) ? (r.count/maxVal)*100 : 0;
+            return `
+                <tr onclick="window.openMonthlyRankingModal('${r.title}')">
+                    <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
+                    <td style="width:140px"><div style="font-weight:bold">${r.title.replace('/','年')}月</div></td>
+                    <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">${r.count.toLocaleString()}</div></div></td>
+                </tr>`;
+        }).join('');
+
+    } else if (type === 'group_all_active') {
+        const activeDates = [];
+        
+        dateStrList.forEach(dateStr => {
+            const dObj = new Date(dateStr);
+            let expectedMembers = 0;
+            let actualSenders = 0;
+            let dailyTotal = 0;
+
+            for (const memberName in statsMap) {
+                const s = statsMap[memberName];
+                
+                // 新加入と卒業のみで判定
+                // （※加入日ではなく「実際にメッセージアプリを開始した日」を基準にして、加入〜アプリ開始までのタイムラグによる判定漏れを防ぎます）
+                const activeStart = s.firstLogDate || s.actualStartDate;
+
+                if (dObj >= activeStart && dObj <= s.endDate) {
+                    expectedMembers++;
+                    const c = s.logs[dateStr] || 0;
+                    if (c > 0) {
+                        actualSenders++;
+                        dailyTotal += c;
+                    }
+                }
+            }
+
+            // 在籍している全員が送信していれば達成！
+            if (expectedMembers > 0 && expectedMembers === actualSenders) {
+                activeDates.push({ title: dateStr, count: dailyTotal });
+            }
+        });
+
+        dataList = activeDates.sort((a,b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count');
+
+        let maxVal = dataList.length > 0 ? dataList[0].count : 0;
+        let rank = 1;
+        
+        trHtml = dataList.map((r, i) => {
+            if(i > 0 && r.count < dataList[i-1].count) rank = i + 1;
+            const rc = rank <= 3 ? `rank-${rank}` : ''; 
+            const w = (maxVal > 0) ? (r.count/maxVal)*100 : 0;
+            return `
+                <tr onclick="window.openDailyRankingModal('${r.title}')">
+                    <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
+                    <td style="width:140px"><div style="font-weight:bold">${r.title}</div><div style="font-size:10px;color:#888">全員送信達成！</div></td>
+                    <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">計 ${r.count.toLocaleString()} 通</div></div></td>
+                </tr>`;
+        }).join('');
+        
+        if (dataList.length === 0) {
+            trHtml = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: #888;">達成記録はありません</td></tr>`;
+        }
+
+    // --------------------------------------------------
+    // 個別ランキングのHTML生成処理 (すべて applyTop10WithTies を使用)
+    // --------------------------------------------------
+    } else if (type === 'wins') {
         const dailyWins = {}; const dates = new Set();
         filteredLogs.forEach(l => { if (statsMap[l.name] && (Number(l.count) || 0) > 0) dates.add(l.date); });
         
@@ -381,6 +503,7 @@ export const renderRecordPage = () => {
         dataList = Object.entries(dailyWins)
             .map(([name, count]) => ({ name, count, color: state.memberMap[name]?.color || '#ccc' }))
             .sort((a,b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count'); // ★
             
         if(dataList.length) maxVal = dataList[0].count; 
         unit = "回";
@@ -402,7 +525,9 @@ export const renderRecordPage = () => {
         dataList = filteredLogs
             .filter(l => statsMap[l.name]) 
             .map(l => ({ date: l.date, name: l.name, count: Number(l.count) || 0, color: state.memberMap[l.name]?.color || '#ccc' }))
-            .filter(r => r.count > 0).sort((a,b) => b.count - a.count).slice(0, 30);
+            .filter(r => r.count > 0)
+            .sort((a,b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count'); // ★
             
         if(dataList.length) maxVal = dataList[0].count;
         let rank = 1;
@@ -432,7 +557,8 @@ export const renderRecordPage = () => {
         dataList = Object.entries(monthlyData).map(([k, count]) => {
             const [date, name] = k.split('_'); 
             return { date, name, count, color: state.memberMap[name]?.color || '#ccc' };
-        }).sort((a,b) => b.count - a.count).slice(0, 30);
+        }).sort((a,b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count'); // ★
         
         if(dataList.length) maxVal = dataList[0].count;
         let rank = 1;
@@ -477,6 +603,7 @@ export const renderRecordPage = () => {
         dataList = Object.entries(monthlyWins)
             .map(([name, count]) => ({ name, count, color: state.memberMap[name]?.color || '#ccc' }))
             .sort((a, b) => b.count - a.count);
+        dataList = applyTop10WithTies(dataList, 'count'); // ★
             
         if (dataList.length) maxVal = dataList[0].count; 
         unit = "回"; 
@@ -495,45 +622,41 @@ export const renderRecordPage = () => {
         }).join('');
         
     } else {
-        if (type === 'total') { 
-            dataList = Object.values(statsMap).sort((a,b) => b.total - a.total); 
-            maxVal = dataList[0]?.total || 0; 
-        } else if (type === 'streak') { 
-            dataList = Object.values(statsMap).filter(s => s.streakMax > 0).sort((a,b) => b.streakMax - a.streakMax); 
-            maxVal = dataList[0]?.streakMax || 0; unit = "日"; 
-        } else if (type === 'average_daily') { 
-            dataList = Object.values(statsMap).map(s => { s.avg = s.duration > 0 ? s.total/s.duration : 0; return s; }).sort((a,b) => b.avg - a.avg); 
-            maxVal = dataList[0]?.avg || 0; isDecimal = true; 
-        } else if (type === 'average_monthly') { 
-            dataList = Object.values(statsMap).map(s => { 
-                s.avg = s.completedDurationMonths > 0 ? s.completedTotal / s.completedDurationMonths : 0; return s; 
-            }).sort((a,b) => b.avg - a.avg); 
-            maxVal = dataList[0]?.avg || 0; isDecimal = true; 
-        } else if (type === 'active_rate') { 
-            dataList = Object.values(statsMap).map(s => { s.rate = s.duration > 0 ? (s.activeDays/s.duration)*100 : 0; return s; }).sort((a,b) => b.rate - a.rate); 
-            maxVal = 100; unit = "%"; isDecimal = true; 
-        } else if (type === 'high_volume') { 
-            dataList = Object.values(statsMap).sort((a,b) => b.highVolumeDays - a.highVolumeDays); 
-            maxVal = dataList[0]?.highVolumeDays || 0; unit = "回"; 
-        } else if (type === 'perfect_months') { 
-            dataList = Object.values(statsMap).filter(s => s.maxPerfectStreak > 0).sort((a,b) => b.maxPerfectStreak - a.maxPerfectStreak); 
-            maxVal = dataList[0]?.maxPerfectStreak || 0; unit = "ヶ月"; 
-        } else if (type === 'top3') { 
-            dataList = Object.values(statsMap).sort((a,b) => b.top3Count - a.top3Count); 
-            maxVal = dataList[0]?.top3Count || 0; unit = "回"; 
-        }
-
         const statKeyMap = { 
             'total': 'total', 'streak': 'streakMax', 'average_daily': 'avg', 'average_monthly': 'avg', 
             'active_rate': 'rate', 'high_volume': 'highVolumeDays', 'perfect_months': 'maxPerfectStreak', 'top3': 'top3Count' 
         };
+        const targetKey = statKeyMap[type];
+
+        // ゼロを除外する条件
+        dataList = Object.values(statsMap).filter(s => type === 'streak' ? s.streakMax > 0 : type === 'perfect_months' ? s.maxPerfectStreak > 0 : true);
+
+        // ソート前に計算が必要な項目の処理
+        if (type === 'average_daily') {
+            dataList.forEach(s => s.avg = s.duration > 0 ? s.total/s.duration : 0);
+        } else if (type === 'average_monthly') {
+            dataList.forEach(s => s.avg = s.completedDurationMonths > 0 ? s.completedTotal / s.completedDurationMonths : 0);
+        } else if (type === 'active_rate') {
+            dataList.forEach(s => s.rate = s.duration > 0 ? (s.activeDays/s.duration)*100 : 0);
+        }
+
+        // ソートして同率考慮のTop10抽出
+        dataList.sort((a,b) => b[targetKey] - a[targetKey]);
+        dataList = applyTop10WithTies(dataList, targetKey); // ★
+
+        maxVal = dataList.length > 0 ? dataList[0][targetKey] : 0;
+
+        if (type === 'streak') unit = "日";
+        else if (type === 'average_daily' || type === 'average_monthly') isDecimal = true;
+        else if (type === 'active_rate') { unit = "%"; isDecimal = true; maxVal = 100; }
+        else if (type === 'high_volume' || type === 'top3') unit = "回";
+        else if (type === 'perfect_months') unit = "ヶ月";
 
         let rank = 1;
         
         trHtml = dataList.map((r, i) => {
             if (r.duration === 0) return "";
             
-            const targetKey = statKeyMap[type]; 
             const val = r[targetKey] || 0;
             
             if (i > 0 && val < (dataList[i-1][targetKey] || 0)) rank = i + 1; 
