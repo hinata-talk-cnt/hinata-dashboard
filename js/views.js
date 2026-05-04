@@ -436,9 +436,6 @@ export const renderRecordPage = () => {
 
             for (const memberName in statsMap) {
                 const s = statsMap[memberName];
-                
-                // 新加入と卒業のみで判定
-                // （※加入日ではなく「実際にメッセージアプリを開始した日」を基準にして、加入〜アプリ開始までのタイムラグによる判定漏れを防ぎます）
                 const activeStart = s.firstLogDate || s.actualStartDate;
 
                 if (dObj >= activeStart && dObj <= s.endDate) {
@@ -457,20 +454,17 @@ export const renderRecordPage = () => {
             }
         });
 
-        dataList = activeDates.sort((a,b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count');
+        dataList = activeDates.sort((a,b) => new Date(b.title) - new Date(a.title));
 
-        let maxVal = dataList.length > 0 ? dataList[0].count : 0;
+        // 日付順なので、送信数の最大値（グラフのバーの幅用）を全体から計算し直す
+        let maxVal = dataList.length > 0 ? Math.max(...dataList.map(d => d.count)) : 0;
         let rank = 1;
         
         trHtml = dataList.map((r, i) => {
-            if(i > 0 && r.count < dataList[i-1].count) rank = i + 1;
-            const rc = rank <= 3 ? `rank-${rank}` : ''; 
             const w = (maxVal > 0) ? (r.count/maxVal)*100 : 0;
             return `
                 <tr onclick="window.openDailyRankingModal('${r.title}')">
-                    <td style="width:40px;text-align:center"><span class="rank-num ${rc}">${rank}</span></td>
-                    <td style="width:140px"><div style="font-weight:bold">${r.title}</div><div style="font-size:10px;color:#888">全員送信達成！</div></td>
+                    <td style="width:140px"><div style="font-weight:bold">${r.title}</div></td>
                     <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">計 ${r.count.toLocaleString()} 通</div></div></td>
                 </tr>`;
         }).join('');
