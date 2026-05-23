@@ -231,20 +231,35 @@
 <div id="modalOverlay" class="modal-overlay"></div>
 
 <div id="modal" class="modal" role="dialog" aria-modal="true">
-    <div class="modal-head">
-        <div class="modal-nav-row">
-            <button type="button" class="nav-arrow" id="btnModalPrev" aria-label="前のメンバー">◀</button>
-            <div class="modal-title-col">
-                <h2 id="modalName" style="margin:0;">-</h2>
+    <div class="modal-head" style="position: relative; padding: 20px 10px 15px; display: flex; flex-direction: column; align-items: center;">
+        
+        <button type="button" class="close-btn modal-close-btn-sub" onclick="window.closeModal()" aria-label="閉じる" style="position: absolute; top: 10px; right: 15px; z-index: 100; border: none; background: none; font-size: 26px; cursor: pointer; color: #666; padding: 0; line-height: 1;">×</button>
+
+        <div class="modal-nav-row" style="display: flex; align-items: center; justify-content: center; width: 100%; max-width: 320px; margin-bottom: 15px;">
+            <button type="button" class="nav-arrow" id="btnModalPrev" aria-label="前のメンバー" style="flex-shrink: 0; width: 40px; border: none; background: none; cursor: pointer; padding: 0; text-align: center;">◀</button>
+            
+            <div class="modal-title-col" style="flex: 1; min-width: 0; text-align: center; padding: 0 5px;">
+                <h2 id="modalName" style="margin:0; font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</h2>
                 <div id="modalSubtitle" class="modal-subtitle"></div>
             </div>
-            <button type="button" class="nav-arrow" id="btnModalNext" aria-label="次のメンバー">▶</button>
+            
+            <button type="button" class="nav-arrow" id="btnModalNext" aria-label="次のメンバー" style="flex-shrink: 0; width: 40px; border: none; background: none; cursor: pointer; padding: 0; text-align: center;">▶</button>
         </div>
-        <div class="modal-period-controls">
-            <button type="button" class="title-nav-btn modal-period-btn" onclick="window.shiftModalPeriod(1)" aria-label="前の期間">◀</button>
-            <select id="modalPeriodSelector" class="modal-select" aria-label="期間選択"></select>
-            <button type="button" class="title-nav-btn modal-period-btn" onclick="window.shiftModalPeriod(-1)" aria-label="次の期間">▶</button>
-            <button type="button" class="close-btn modal-close-btn-sub" onclick="window.closeModal()" aria-label="閉じる">×</button>
+        
+        <div class="modal-period-controls" style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; width: 100%;">
+            
+            <div id="modalAddDataWrap" style="display: none;">
+                <label style="cursor: pointer; color: #666; font-weight: bold; font-size: 12px; white-space: nowrap; display: flex; align-items: center; margin: 0;">
+                    <input type="checkbox" id="modalIncludeAddData" style="margin-right: 4px;" onchange="window.updateModalContent()">全データ
+                </label>
+            </div>
+            
+            <div style="display: flex; align-items: center;">
+                <button type="button" class="title-nav-btn modal-period-btn" onclick="window.shiftModalPeriod(1)" aria-label="前の期間" style="border: none; background: none; cursor: pointer; padding: 0 8px;">◀</button>
+                <select id="modalPeriodSelector" class="modal-select" aria-label="期間選択" onchange="window.updateModalContent()" style="margin: 0 4px;"></select>
+                <button type="button" class="title-nav-btn modal-period-btn" onclick="window.shiftModalPeriod(-1)" aria-label="次の期間" style="border: none; background: none; cursor: pointer; padding: 0 8px;">▶</button>
+            </div>
+            
         </div>
     </div>
     

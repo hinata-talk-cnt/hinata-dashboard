@@ -12,14 +12,17 @@ const DATA_VER = new Date().getTime();
  */
 const init = async () => {
     try {
-        // Promise.all を使い、ログデータとメンバー情報のJSONを並列で取得し、ロード時間を短縮
-        const [logs, members] = await Promise.all([
+        // Promise.all を使い、ログデータとメンバー情報のJSONを並列で取得
+        const [logs, addLogs, members] = await Promise.all([
             fetch(`data.json?v=${DATA_VER}`).then(res => res.json()), 
+            fetch(`add_data.json?v=${DATA_VER}`).then(res => res.json()).catch(() => []), 
             fetch(`members.json?v=${DATA_VER}`).then(res => res.json())
         ]);
         
-        state.allLogs = logs; 
-        state.allMembers = members; 
+        const processedAddLogs = addLogs.map(l => ({ ...l, additional: true }));
+        
+        state.allLogs = logs.concat(processedAddLogs); 
+        state.allMembers = members;
         
         // メンバーデータの初期セットアップ（カラー設定のフォールバックと、高速検索用Mapの作成）
         state.allMembers.forEach(m => {
@@ -61,6 +64,7 @@ function processDataRange() {
     
     // 1. 全データから、アプリ全体で扱う日付の最小値(min)と最大値(max)を取得
     state.allLogs.forEach(l => { 
+        if (l.additional) return;
         const c = Number(l.count) || 0;
         if (l.date && c > 0) { 
             const d = new Date(l.date); 
@@ -88,6 +92,7 @@ function processDataRange() {
     // 2. メンバー個別の「最初の送信日」と「最後の送信日」を特定
     state.allMembers.forEach(m => { m.firstLogDate = null; m.lastLogDate = null; });
     state.allLogs.forEach(l => {
+        if (l.additional) return;
         const count = Number(l.count) || 0;
         if (count > 0 && state.memberMap[l.name]) {
             const d = new Date(l.date); 
@@ -139,6 +144,7 @@ function initApp() {
     
     // 存在する「年月」「年」をSetに集約しつつ、全期間の総件数を計算
     state.allLogs.forEach(l => { 
+        if (l.additional) return;
         const c = Number(l.count) || 0;
         if (l.date && c > 0) { 
             const p = l.date.split('/'); 
@@ -158,6 +164,7 @@ function initApp() {
         let count = 0; 
         const [y, m] = ym.split('/').map(Number);
         state.allLogs.forEach(l => { 
+            if (l.additional) return;
             const p = l.date.split('/').map(Number); 
             if (p[0] === y && p[1] === m) count += (Number(l.count) || 0); 
         });
@@ -183,6 +190,7 @@ function initApp() {
         
         // 年間、上半期、下半期のそれぞれの合計件数を計算
         state.allLogs.forEach(l => { 
+            if (l.additional) return;
             const p = l.date.split('/').map(Number); 
             const c = Number(l.count) || 0; 
             if (p[0] === yNum) { 
@@ -330,6 +338,7 @@ function updateDashboard() {
     
     // 現在のフィルターに合致するログを集計
     state.allLogs.forEach(l => { 
+        if (l.additional) return;
         if (isDateInPeriod(l.date, state.currentFilter)) { 
             const c = Number(l.count) || 0; 
             total += c; 
@@ -438,6 +447,9 @@ function bindEvents() {
     document.getElementById('btnModalNext').onclick = () => switchModalMember(1);
     document.getElementById('modalOverlay').onclick = closeModal; // 黒背景クリックで閉じる
     document.getElementById('modalPeriodSelector').onchange = updateModalContent;
+
+    const addDataChk = document.getElementById('modalIncludeAddData');
+    if (addDataChk) addDataChk.onchange = updateModalContent;
     
     // プルダウン変更
     document.getElementById('genSelector').onchange = renderRankingView;

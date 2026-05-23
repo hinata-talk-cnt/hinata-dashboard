@@ -20,6 +20,7 @@ export const renderRankingView = () => {
     
     const totals = {};
     state.allLogs.forEach(l => { 
+        if (l.additional) return;
         if (isDateInPeriod(l.date, state.currentFilter)) {
             totals[l.name] = (totals[l.name] || 0) + (Number(l.count) || 0);
         }
@@ -172,7 +173,7 @@ export const renderRecordPage = () => {
         }
         const compYM = compY * 100 + compM; 
 
-        const filteredLogs = state.allLogs.filter(l => new Date(l.date) >= baseMinDateObj);
+        const filteredLogs = state.allLogs.filter(l => new Date(l.date) >= baseMinDateObj && !l.additional);
         const statsMap = {}; 
         const oneDay = 24 * 60 * 60 * 1000;
         
@@ -185,7 +186,7 @@ export const renderRecordPage = () => {
                 streakStart: null, streakEnd: null, maxStreakStart: null, maxStreakEnd: null,
                 currentPerfectStreak: 0, maxPerfectStreak: 0, perfectStreakStart: null, maxPerfectStart: null, maxPerfectEnd: null,
                 actualStartDate: m.actualStartDate, endDate: m.actualEndDate, 
-                firstLogDate: m.firstLogDate, // ★ 追加：アプリの初回送信日
+                firstLogDate: m.firstLogDate, // アプリの初回送信日
                 isGraduated: !!m.gradDate, logs: {}
             };
         });
@@ -355,7 +356,7 @@ export const renderRecordPage = () => {
         
         let modeHtml = ['total', 'active_rate'].includes(type) ? "<span style='color:#FF9F43;'>通算記録</span>"
                      : isMonthlyRecord ? "<span style='color:#28c76f;'>月間記録</span>"
-                     : type.startsWith('group') ? "<span style='color:#4b89dc;'>グループ記録</span>" // ←紫から水色に変更
+                     : type.startsWith('group') ? "<span style='color:#4b89dc;'>グループ記録</span>"
                      : "<span style='color:#4b89dc;'>日次記録</span>";
 
         infoEl.innerHTML = `<span>${modeHtml}</span><span>${activePeriodText}</span>`;
@@ -458,13 +459,12 @@ export const renderRecordPage = () => {
 
         // 日付順なので、送信数の最大値（グラフのバーの幅用）を全体から計算し直す
         let maxVal = dataList.length > 0 ? Math.max(...dataList.map(d => d.count)) : 0;
-        let rank = 1;
         
         trHtml = dataList.map((r, i) => {
             const w = (maxVal > 0) ? (r.count/maxVal)*100 : 0;
             return `
                 <tr onclick="window.openDailyRankingModal('${r.title}')">
-                    <td style="width:140px"><div style="font-weight:bold">${r.title}</div></td>
+                    <td style="width:40px;text-align:center;font-size:1.2em;">🌈</td> <td style="width:140px"><div style="font-weight:bold">${r.title}</div><div style="font-size:10px;color:#888">全員送信達成！</div></td>
                     <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">計 ${r.count.toLocaleString()} 通</div></div></td>
                 </tr>`;
         }).join('');

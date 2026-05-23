@@ -14,6 +14,7 @@ export const openMonthlyRankingModal = (ym) => {
     
     // 対象月のデータをメンバーごとに合算
     state.allLogs.forEach(l => {
+        if (l.additional) return;
         const [lYear, lMonth] = l.date.split('/').map(Number);
         if (lYear === year && lMonth === month) {
             memberTotals[l.name] = (memberTotals[l.name] || 0) + (Number(l.count) || 0);
@@ -65,7 +66,7 @@ export const openDailyRankingModal = (dateStr) => {
     
     // 該当日のログだけを抽出し、降順ソート（送信数0の人は除外）
     const ranking = state.allLogs
-        .filter(l => l.date === dateStr)
+        .filter(l => l.date === dateStr && !l.additional)
         .map(l => ({ name: l.name, count: Number(l.count) || 0, color: state.memberMap[l.name]?.color || '#ccc' }))
         .filter(r => r.count > 0)
         .sort((a, b) => b.count - a.count);
@@ -114,6 +115,18 @@ export const openModal = (name, preferredPeriod = null) => {
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('modal').style.display = 'block';
     document.getElementById('modalName').innerText = name;
+    
+    const addDataWrap = document.getElementById('modalAddDataWrap');
+    const addDataChk = document.getElementById('modalIncludeAddData');
+    const memberInfo = state.memberMap[name];
+    if (addDataWrap && addDataChk && memberInfo) {
+        if (String(memberInfo.gen) === '4' && name !== '岸帆夏') {
+            addDataWrap.style.display = 'block';
+        } else {
+            addDataWrap.style.display = 'none';
+            addDataChk.checked = false; 
+        }
+    }
     
     // --------------------------------------------------
     // 1. そのメンバーがデータを持つ期間（月、年、半期）を抽出
@@ -176,7 +189,21 @@ export const openModal = (name, preferredPeriod = null) => {
  */
 export const updateModalContent = () => {
     const name = state.currentModalMember;
-    const [type, value] = document.getElementById('modalPeriodSelector').value.split(':');
+    const mSel = document.getElementById('modalPeriodSelector');
+    const includeAddData = document.getElementById('modalIncludeAddData')?.checked || false;
+
+    Array.from(mSel.options).forEach(opt => {
+        if (['month:2023/08', 'month:2023/09', 'month:2023/10'].includes(opt.value)) {
+            opt.style.display = includeAddData ? '' : 'none';
+            opt.disabled = !includeAddData;
+        }
+    });
+
+    if (mSel.options[mSel.selectedIndex]?.disabled) {
+        mSel.value = 'all:all';
+    }
+
+    const [type, value] = mSel.value.split(':');
     const filter = { type, value };
     const member = state.memberMap[name];
     
@@ -193,8 +220,12 @@ export const updateModalContent = () => {
         const logMap = {};
         
         state.allLogs.forEach(l => {
-            if (l.name === name && isDateInPeriod(l.date, filter)) {
-                logMap[Number(l.date.split('/')[2])] = Number(l.count) || 0;
+            if (l.name === name) {
+                if (l.additional && !includeAddData) return;
+                
+                if (isDateInPeriod(l.date, filter)) {
+                    logMap[Number(l.date.split('/')[2])] = Number(l.count) || 0;
+                }
             }
         });
 
@@ -238,10 +269,14 @@ export const updateModalContent = () => {
     } else {
         const mSum = new Map(); 
         state.allLogs.forEach(l => { 
-            if (l.name === name && isDateInPeriod(l.date, filter)) { 
-                const p = l.date.split('/').map(Number); 
-                const ym = `${p[0]}/${String(p[1]).padStart(2, '0')}`; 
-                mSum.set(ym, (mSum.get(ym) || 0) + (Number(l.count) || 0)); 
+            if (l.name === name) {
+                if (l.additional && !includeAddData) return;
+                
+                if (isDateInPeriod(l.date, filter)) { 
+                    const p = l.date.split('/').map(Number); 
+                    const ym = `${p[0]}/${String(p[1]).padStart(2, '0')}`; 
+                    mSum.set(ym, (mSum.get(ym) || 0) + (Number(l.count) || 0)); 
+                }
             }
         });
         
@@ -326,6 +361,14 @@ export const updateModalContent = () => {
     // --------------------------------------------------
     // Chart.js によるグラフ描画
     // --------------------------------------------------
+    if (sum === 0 && document.getElementById('modalPeriodSelector').value !== 'all:all') {
+        const mSel = document.getElementById('modalPeriodSelector');
+        if (Array.from(mSel.options).some(o => o.value === 'all:all')) {
+            mSel.value = 'all:all';
+            return updateModalContent();
+        }
+    }
+
     if (state.chartInstance) state.chartInstance.destroy(); 
     
     const accentColor = '#FF9F43'; 
