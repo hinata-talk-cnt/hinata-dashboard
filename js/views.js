@@ -449,7 +449,7 @@ export const renderRecordPage = () => {
                 }
             }
 
-            // 在籍している全員が送信していれば達成！
+            // 在籍している全員が送信していれば達成
             if (expectedMembers > 0 && expectedMembers === actualSenders) {
                 activeDates.push({ title: dateStr, count: dailyTotal });
             }
@@ -457,15 +457,15 @@ export const renderRecordPage = () => {
 
         dataList = activeDates.sort((a,b) => new Date(b.title) - new Date(a.title));
 
-        // 日付順なので、送信数の最大値（グラフのバーの幅用）を全体から計算し直す
+        // 日付順なので、送信数の最大値を全体から計算し直す
         let maxVal = dataList.length > 0 ? Math.max(...dataList.map(d => d.count)) : 0;
         
         trHtml = dataList.map((r, i) => {
             const w = (maxVal > 0) ? (r.count/maxVal)*100 : 0;
             return `
                 <tr onclick="window.openDailyRankingModal('${r.title}')">
-                    <td style="width:40px;text-align:center;font-size:1.2em;">🌈</td> <td style="width:140px"><div style="font-weight:bold">${r.title}</div><div style="font-size:10px;color:#888">全員送信達成！</div></td>
-                    <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">計 ${r.count.toLocaleString()} 通</div></div></td>
+                    <td style="width:140px"><div style="font-weight:bold">${r.title}</div></td>
+                    <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${w}%;background:#4b89dc"></div></div><div class="bar-txt">${r.count.toLocaleString()}</div></div></td>
                 </tr>`;
         }).join('');
         
@@ -474,7 +474,7 @@ export const renderRecordPage = () => {
         }
 
     // --------------------------------------------------
-    // 個別ランキングのHTML生成処理 (すべて applyTop10WithTies を使用)
+    // 個別ランキングのHTML生成処理
     // --------------------------------------------------
     } else if (type === 'wins') {
         const dailyWins = {}; const dates = new Set();
