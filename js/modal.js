@@ -372,6 +372,7 @@ export const updateModalContent = () => {
     if (state.chartInstance) state.chartInstance.destroy(); 
     
     const accentColor = '#FF9F43'; 
+    const isMobile = window.innerWidth <= 768;
     
     state.chartInstance = new Chart(document.getElementById('personalChart').getContext('2d'), {
         type: 'bar', 
@@ -387,7 +388,15 @@ export const updateModalContent = () => {
             maintainAspectRatio: false, 
             interaction: { mode: 'index', intersect: false },
             scales: { 
-                x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 10 } } }, 
+                x: { 
+                    ticks: { 
+                        autoSkip: isMobile, 
+                        maxTicksLimit: isMobile ? 15 : undefined,
+                        maxRotation: 45, 
+                        minRotation: 45, 
+                        font: { size: 10 } 
+                    } 
+                }, 
                 y: { position: 'left', beginAtZero: true, ticks: { precision: 0, maxTicksLimit: 6 } }, 
                 y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { precision: 0, maxTicksLimit: 6 } } 
             },

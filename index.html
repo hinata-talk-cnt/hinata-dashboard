@@ -50,6 +50,18 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { font-weight: bold; color: #666; letter-spacing: 1px; font-family: sans-serif; }
+
+        @media (max-width: 480px) {
+            /* 画面が狭いときはテキストを隠してアイコンだけにする */
+            .hide-on-mobile { display: none; }
+            /* タイトルの文字サイズを少し調整 */
+            #groupSummaryModalTitle { font-size: 14px !important; }
+        }
+        /* モーダル内のテーブルの文字折り返しを禁止して横スクロールさせる */
+        #groupSummaryModal table th,
+        #groupSummaryModal table td {
+            white-space: nowrap;
+        }
     </style>
     <script>
         const ver = new Date().getTime();
@@ -174,8 +186,19 @@
                         <span id="pageTitle">読み込み中...</span>
                         <button type="button" class="title-nav-btn" id="btnNextPeriod" aria-label="次の期間">▶</button>
                     </div>
-                    <select id="genSelector" aria-label="期別絞り込み"></select>
+                    
+                    <!-- プルダウンとボタンを横並びにするコンテナ -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div id="groupSummaryTriggerArea" style="display: none;">
+                            <!-- スマホでも収まるように少しコンパクトに調整 -->
+                            <button type="button" onclick="window.openGroupSummaryModal()" style="padding: 6px 12px; background: #4b89dc; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 12px; white-space: nowrap; flex-shrink: 0;">
+                                📊<span class="hide-on-mobile"> グループ全体推移</span>
+                            </button>
+                        </div>
+                        <select id="genSelector" aria-label="期別絞り込み"></select>
+                    </div>
                 </div>
+
                 <div id="rankingArea"></div>
             </div>
             
@@ -292,6 +315,44 @@
         <button type="button" class="close-btn" onclick="window.closeModal()" aria-label="閉じる">×</button>
     </div>
     <div id="dailyRankingArea" class="daily-list-wrap"></div>
+</div>
+
+<!-- ====== グループ全体推移用のモーダル ====== -->
+<div id="groupSummaryModal" class="modal" role="dialog" aria-modal="true" style="max-width: 800px; display: none;">
+        <div class="modal-head">
+        <div class="modal-title-col" style="display: flex; align-items: center; gap: 15px;">
+            <button type="button" id="modalBtnPrev" onclick="window.changeMonthFromModal(-1)" style="background: none; border: none; cursor: pointer; color: #4b89dc; font-size: 16px; padding: 4px;">◀</button>
+            <h2 id="groupSummaryModalTitle" style="margin:0; font-size:16px;">グループ全体推移</h2>
+            <button type="button" id="modalBtnNext" onclick="window.changeMonthFromModal(1)" style="background: none; border: none; cursor: pointer; color: #4b89dc; font-size: 16px; padding: 4px;">▶</button>
+        </div>
+        <button type="button" class="close-btn" onclick="window.closeGroupSummaryModal()" aria-label="閉じる">×</button>
+    </div>
+    <div style="padding: 15px; max-height: 75vh; overflow-y: auto;">
+        <!-- グラフエリア -->
+        <div style="position: relative; height: 300px; width: 100%; margin-bottom: 20px;">
+            <canvas id="groupTrendChart"></canvas>
+        </div>
+
+        <div id="groupSummaryTopCountsArea" style="display: none; margin-bottom: 20px; font-size: 13px; color: #444; background: #fff; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #eee;">
+            <!-- JavaScriptでここにトップ回数が追加されます -->
+        </div>
+
+        <!-- 一覧リスト（テーブル）エリア -->
+        <div style="overflow-x: auto; background: #fafafa; border-radius: 6px; padding: 10px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; color: #444;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #ddd;">
+                        <th style="padding: 8px;">日付</th>
+                        <th style="padding: 8px;">日別</th>
+                        <th style="padding: 8px;">トップメンバー</th>
+                    </tr>
+                </thead>
+                <tbody id="groupSummaryTableBody">
+                    <!-- JavaScriptでここにリストが追加されます -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script type="module">

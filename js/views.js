@@ -4,12 +4,163 @@ import { state, genKanji, isDateInPeriod, isActiveMemberInPeriod, formatDateStr 
 // 記録ページ用のキャッシュ（メモ化）変数
 // ==================================================
 let recordCache = {
-    isSince5thGen: null, // キャッシュした時のチェックボックスの状態
-    statsMap: null,      // 計算済みのメンバー別統計データ
-    filteredLogs: null,  // 計算済みのログ配列
-    periodText: null,    // 計算済みの期間テキスト
-    compYM: null, compY: null, compM: null // 計算済みの完了月データ
+    isSince5thGen: null, 
+    statsMap: null,      
+    filteredLogs: null,  
+    periodText: null,    
+    compYM: null, compY: null, compM: null 
 };
+
+// Chart.jsのグラフインスタンスを保持する変数
+let groupChartInstance = null; 
+// グループ推移のデータを一時保存する変数
+window.groupSummaryChartData = null; 
+
+// ==================================================
+// ★ グループ全体推移モーダルの開閉処理
+// ==================================================
+window.openGroupSummaryModal = () => {
+    document.getElementById('modalOverlay').style.display = 'block';
+    const modal = document.getElementById('groupSummaryModal');
+    modal.style.display = 'block'; 
+    
+    // ★ 必殺技: 画面が表示されてから確実に一番上に戻す（枠と中身両方）
+    setTimeout(() => {
+        modal.scrollTop = 0;
+        const innerScrollArea = modal.querySelector('div[style*="overflow-y: auto"]');
+        if (innerScrollArea) {
+            innerScrollArea.scrollTop = 0;
+        }
+    }, 30);
+    
+    // ポップアップを開いている間は背景のスクロールをロックする
+    document.body.style.overflow = 'hidden';
+    
+    // モーダルが画面に表示されてからグラフを描画
+    if (window.groupSummaryChartData) {
+        const d = window.groupSummaryChartData;
+        try {
+            if (typeof Chart !== 'undefined') {
+                const canvas = document.getElementById('groupTrendChart');
+                if (canvas) {
+                    const existingChart = Chart.getChart(canvas);
+                    if (existingChart) {
+                        existingChart.destroy();
+                    } else if (groupChartInstance) {
+                        groupChartInstance.destroy();
+                    }
+
+                    // グラフ設定の直前でスマホかどうかを判定
+                    const isMobile = window.innerWidth <= 768;
+
+                    groupChartInstance = new Chart(canvas, {
+                        data: {
+                            labels: d.labels,
+                            datasets: [
+                                {
+                                    type: 'bar',
+                                    label: '日別合計',
+                                    data: d.values,
+                                    backgroundColor: '#4b89dc',
+                                    borderRadius: 3,
+                                    barPercentage: 0.7,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    type: 'line',
+                                    label: '累計',
+                                    data: d.cumulative,
+                                    borderColor: '#ff9f43',
+                                    backgroundColor: '#ff9f43',
+                                    borderWidth: 2,
+                                    pointRadius: 2,
+                                    fill: false,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                                tooltip: { mode: 'index', intersect: false }
+                            },
+                            scales: {
+                                y: { type: 'linear', display: true, position: 'left', beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { precision: 0 } },
+                                y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { precision: 0 } },
+                                x: { 
+                                    grid: { display: false },
+                                    ticks: {
+                                        // ★ スマホなら省略(true)、PCなら全表示(false)
+                                        autoSkip: isMobile, 
+                                        // ★ スマホの時は最大表示数を制限して見やすくする
+                                        maxTicksLimit: isMobile ? 15 : undefined,
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('グラフ描画エラー:', error);
+        }
+    }
+};
+
+window.closeGroupSummaryModal = () => {
+    document.getElementById('modalOverlay').style.display = 'none';
+    const modal = document.getElementById('groupSummaryModal');
+    modal.style.display = 'none';
+    
+    // 次に開いた時のために、閉じる瞬間にも強制リセットしておく
+    modal.scrollTop = 0;
+    const innerScrollArea = modal.querySelector('div[style*="overflow-y: auto"]');
+    if (innerScrollArea) {
+        innerScrollArea.scrollTop = 0;
+    }
+    
+    document.body.style.overflow = '';
+};
+
+// 背景（オーバーレイ）をクリックしたときにグループ推移ポップアップも閉じる
+document.getElementById('modalOverlay')?.addEventListener('click', () => {
+    const groupModal = document.getElementById('groupSummaryModal');
+    if (groupModal && groupModal.style.display !== 'none') {
+        window.closeGroupSummaryModal();
+    }
+});
+
+// ==================================================
+// ▼▼▼ ここから追加: ポップアップ内から月を移動する処理 ▼▼▼
+// ==================================================
+window.changeMonthFromModal = (direction) => {
+    // 背景にあるメイン画面の「◀」「▶」ボタンをJavaScriptからクリックする
+    if (direction === -1) {
+        const btn = document.getElementById('btnPrevPeriod');
+        if(btn) btn.click();
+    } else {
+        const btn = document.getElementById('btnNextPeriod');
+        if(btn) btn.click();
+    }
+
+    // メイン画面の再集計が終わるのを一瞬だけ待ってからポップアップを更新
+    setTimeout(() => {
+        // 移動先の月にデータが存在すればグラフを描画し直す（データが無い場合はポップアップを閉じる）
+        if (window.groupSummaryChartData) {
+            window.openGroupSummaryModal();
+        } else {
+            window.closeGroupSummaryModal();
+        }
+    }, 50);
+};
+// ==================================================
+// ▲▲▲ ここまで追加 ▲▲▲
+// ==================================================
+
 
 /**
  * 「データ」タブのメインビュー（ランキング表）を描画する関数
@@ -19,12 +170,145 @@ export const renderRankingView = () => {
     const currentGen = String(genSel.value); 
     
     const totals = {};
+    const filteredLogs = []; 
+
     state.allLogs.forEach(l => { 
         if (l.additional) return;
         if (isDateInPeriod(l.date, state.currentFilter)) {
+            filteredLogs.push(l); 
             totals[l.name] = (totals[l.name] || 0) + (Number(l.count) || 0);
         }
     });
+
+    // ==================================================
+    // ★ グループ全体推移データ（ポップアップ用）の生成
+    // ==================================================
+    const triggerArea = document.getElementById('groupSummaryTriggerArea');
+    const uniqueDates = [...new Set(filteredLogs.map(l => l.date))].sort();
+    const pageTitleText = document.getElementById('pageTitle')?.textContent || '';
+    const isMonthlyView = /^\d{4}\/\d{2}$/.test(pageTitleText) || /^\d{4}年\d{1,2}月$/.test(pageTitleText);
+    
+    if (isMonthlyView && uniqueDates.length > 0) {
+        if (triggerArea) triggerArea.style.display = 'block';
+        
+        const dailyData = {};
+        filteredLogs.forEach(l => {
+            if (!dailyData[l.date]) dailyData[l.date] = { total: 0, members: {} };
+            const c = Number(l.count) || 0;
+            dailyData[l.date].total += c;
+            dailyData[l.date].members[l.name] = (dailyData[l.date].members[l.name] || 0) + c;
+        });
+
+        const chartLabels = [];
+        const chartValues = [];
+        const chartCumulativeValues = []; 
+        let tableHtml = '';
+        let cumulativeTotal = 0;
+        
+        // トップ回数カウント用
+        const topCounts = {};
+
+        uniqueDates.forEach(date => {
+            const data = dailyData[date];
+            cumulativeTotal += data.total;
+            
+            let topMembers = [];
+            let maxCount = -1;
+            for (const [name, count] of Object.entries(data.members)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    topMembers = [name]; 
+                } else if (count === maxCount) {
+                    topMembers.push(name); 
+                }
+            }
+            
+            // トップ回数を集計
+            topMembers.forEach(name => {
+                topCounts[name] = (topCounts[name] || 0) + 1;
+            });
+            
+            const topMemberStr = topMembers.length > 0 ? topMembers.join('・') : '-';
+            const dayStr = date.split('/').pop() + '日';
+            
+            chartLabels.push(dayStr);
+            chartValues.push(data.total);
+            chartCumulativeValues.push(cumulativeTotal);
+
+            // ★ ここから累計(cumulativeTotal)の列を削除しました
+            tableHtml += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px 8px;">${date}</td>
+                    <td style="padding: 10px 8px; font-weight: bold; color: #4b89dc;">${data.total}</td>
+                    <td style="padding: 10px 8px; font-size: 0.9em;">
+                        ${topMemberStr} <span style="color:#888; font-size:0.8em; margin-left: 4px;">(${maxCount}件)</span>
+                    </td>
+                </tr>
+            `;
+        });
+
+        const tableBody = document.getElementById('groupSummaryTableBody');
+        if (tableBody) tableBody.innerHTML = tableHtml;
+
+        const titleEl = document.getElementById('groupSummaryModalTitle');
+        if (titleEl) titleEl.textContent = `${pageTitleText} グループ全体推移`;
+        
+        // ==================================================
+        // ★ ここから追加: 矢印ボタンの表示状態を同期する処理
+        // ==================================================
+        const syncButtonState = (mainId, modalId) => {
+            const mainBtn = document.getElementById(mainId);
+            const modalBtn = document.getElementById(modalId);
+            if (mainBtn && modalBtn) {
+                // メイン画面のボタンが無効化、または非表示になっているかを判定
+                const isDisabled = mainBtn.disabled || mainBtn.style.visibility === 'hidden' || mainBtn.style.display === 'none';
+                if (isDisabled) {
+                    modalBtn.style.opacity = '0.2'; // 色を薄くする
+                    modalBtn.style.pointerEvents = 'none'; // クリックできないようにする
+                } else {
+                    modalBtn.style.opacity = '1'; // 元の濃さに戻す
+                    modalBtn.style.pointerEvents = 'auto'; // クリックできるようにする
+                }
+            }
+        };
+        // 左右のボタンそれぞれに対して処理を実行
+        syncButtonState('btnPrevPeriod', 'modalBtnPrev');
+        syncButtonState('btnNextPeriod', 'modalBtnNext');
+        // ==================================================
+        // ★ 追加ここまで
+        // ==================================================
+
+        // トップ回数エリアの更新
+        const topCountsArea = document.getElementById('groupSummaryTopCountsArea');
+        if (topCountsArea) {
+            // 回数が多い順にソート
+            const sortedTops = Object.entries(topCounts).sort((a, b) => b[1] - a[1]);
+            
+            if (sortedTops.length > 0) {
+                let topCountsHtml = '<div style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 8px;">🥇 月間トップ回数</div>';
+                topCountsHtml += '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+                sortedTops.forEach(([name, count]) => {
+                    topCountsHtml += `<span style="background: #f0f4f8; padding: 4px 8px; border-radius: 4px; border: 1px solid #e1e8ed;">${name}: <strong>${count}回</strong></span>`;
+                });
+                topCountsHtml += '</div>';
+                topCountsArea.innerHTML = topCountsHtml;
+                topCountsArea.style.display = 'block';
+            } else {
+                topCountsArea.style.display = 'none';
+            }
+        }
+
+        window.groupSummaryChartData = {
+            labels: chartLabels,
+            values: chartValues,
+            cumulative: chartCumulativeValues
+        };
+
+    } else {
+        if (triggerArea) triggerArea.style.display = 'none';
+        window.groupSummaryChartData = null;
+    }
+    // ==================================================
 
     const activeGens = new Set();
     state.allMembers.forEach(m => { 
@@ -142,12 +426,12 @@ export const renderRecordPage = () => {
     const isSince5thGen = document.getElementById('recordSince5thGen')?.checked || false;
 
     // ==================================================
-    // ★ 追加：同率を含めて上位10位までを抽出するヘルパー関数
+    // 同率を含めて上位10位までを抽出するヘルパー関数
     // ==================================================
     const applyTop10WithTies = (list, valKey) => {
         if (list.length <= 10) return list;
-        const threshold = list[9][valKey]; // 10番目の要素のスコアを取得
-        return list.filter(item => item[valKey] >= threshold); // そのスコア以上の要素をすべて残す
+        const threshold = list[9][valKey];
+        return list.filter(item => item[valKey] >= threshold); 
     };
 
     // ==================================================
@@ -186,7 +470,7 @@ export const renderRecordPage = () => {
                 streakStart: null, streakEnd: null, maxStreakStart: null, maxStreakEnd: null,
                 currentPerfectStreak: 0, maxPerfectStreak: 0, perfectStreakStart: null, maxPerfectStart: null, maxPerfectEnd: null,
                 actualStartDate: m.actualStartDate, endDate: m.actualEndDate, 
-                firstLogDate: m.firstLogDate, // アプリの初回送信日
+                firstLogDate: m.firstLogDate, 
                 isGraduated: !!m.gradDate, logs: {}
             };
         });
@@ -381,7 +665,7 @@ export const renderRecordPage = () => {
         dataList = Object.entries(dailyGroupTotal)
             .map(([date, count]) => ({ title: date, count: count }))
             .sort((a,b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count'); // ★ 同率考慮のTop10
+        dataList = applyTop10WithTies(dataList, 'count');
 
         if(dataList.length) maxVal = dataList[0].count;
         let rank = 1;
@@ -410,7 +694,7 @@ export const renderRecordPage = () => {
         dataList = Object.entries(monthlyGroupTotal)
             .map(([ym, count]) => ({ title: ym, count: count }))
             .sort((a,b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count'); // ★ 同率考慮のTop10
+        dataList = applyTop10WithTies(dataList, 'count'); 
 
         if(dataList.length) maxVal = dataList[0].count;
         let rank = 1;
@@ -449,7 +733,6 @@ export const renderRecordPage = () => {
                 }
             }
 
-            // 在籍している全員が送信していれば達成
             if (expectedMembers > 0 && expectedMembers === actualSenders) {
                 activeDates.push({ title: dateStr, count: dailyTotal });
             }
@@ -457,7 +740,6 @@ export const renderRecordPage = () => {
 
         dataList = activeDates.sort((a,b) => new Date(b.title) - new Date(a.title));
 
-        // 日付順なので、送信数の最大値を全体から計算し直す
         let maxVal = dataList.length > 0 ? Math.max(...dataList.map(d => d.count)) : 0;
         
         trHtml = dataList.map((r, i) => {
@@ -497,7 +779,7 @@ export const renderRecordPage = () => {
         dataList = Object.entries(dailyWins)
             .map(([name, count]) => ({ name, count, color: state.memberMap[name]?.color || '#ccc' }))
             .sort((a,b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count'); // ★
+        dataList = applyTop10WithTies(dataList, 'count'); 
             
         if(dataList.length) maxVal = dataList[0].count; 
         unit = "回";
@@ -521,7 +803,7 @@ export const renderRecordPage = () => {
             .map(l => ({ date: l.date, name: l.name, count: Number(l.count) || 0, color: state.memberMap[l.name]?.color || '#ccc' }))
             .filter(r => r.count > 0)
             .sort((a,b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count'); // ★
+        dataList = applyTop10WithTies(dataList, 'count'); 
             
         if(dataList.length) maxVal = dataList[0].count;
         let rank = 1;
@@ -552,7 +834,7 @@ export const renderRecordPage = () => {
             const [date, name] = k.split('_'); 
             return { date, name, count, color: state.memberMap[name]?.color || '#ccc' };
         }).sort((a,b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count'); // ★
+        dataList = applyTop10WithTies(dataList, 'count'); 
         
         if(dataList.length) maxVal = dataList[0].count;
         let rank = 1;
@@ -597,7 +879,7 @@ export const renderRecordPage = () => {
         dataList = Object.entries(monthlyWins)
             .map(([name, count]) => ({ name, count, color: state.memberMap[name]?.color || '#ccc' }))
             .sort((a, b) => b.count - a.count);
-        dataList = applyTop10WithTies(dataList, 'count'); // ★
+        dataList = applyTop10WithTies(dataList, 'count'); 
             
         if (dataList.length) maxVal = dataList[0].count; 
         unit = "回"; 
@@ -622,10 +904,8 @@ export const renderRecordPage = () => {
         };
         const targetKey = statKeyMap[type];
 
-        // ゼロを除外する条件
         dataList = Object.values(statsMap).filter(s => type === 'streak' ? s.streakMax > 0 : type === 'perfect_months' ? s.maxPerfectStreak > 0 : true);
 
-        // ソート前に計算が必要な項目の処理
         if (type === 'average_daily') {
             dataList.forEach(s => s.avg = s.duration > 0 ? s.total/s.duration : 0);
         } else if (type === 'average_monthly') {
@@ -634,9 +914,8 @@ export const renderRecordPage = () => {
             dataList.forEach(s => s.rate = s.duration > 0 ? (s.activeDays/s.duration)*100 : 0);
         }
 
-        // ソートして同率考慮のTop10抽出
         dataList.sort((a,b) => b[targetKey] - a[targetKey]);
-        dataList = applyTop10WithTies(dataList, targetKey); // ★
+        dataList = applyTop10WithTies(dataList, targetKey);
 
         maxVal = dataList.length > 0 ? dataList[0][targetKey] : 0;
 
