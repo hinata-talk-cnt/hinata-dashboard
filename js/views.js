@@ -17,14 +17,13 @@ let groupChartInstance = null;
 window.groupSummaryChartData = null; 
 
 // ==================================================
-// ★ グループ全体推移モーダルの開閉処理
+// グループ全体推移モーダルの開閉処理
 // ==================================================
 window.openGroupSummaryModal = () => {
     document.getElementById('modalOverlay').style.display = 'block';
     const modal = document.getElementById('groupSummaryModal');
     modal.style.display = 'block'; 
     
-    // ★ 必殺技: 画面が表示されてから確実に一番上に戻す（枠と中身両方）
     setTimeout(() => {
         modal.scrollTop = 0;
         const innerScrollArea = modal.querySelector('div[style*="overflow-y: auto"]');
@@ -92,9 +91,9 @@ window.openGroupSummaryModal = () => {
                                 x: { 
                                     grid: { display: false },
                                     ticks: {
-                                        // ★ スマホなら省略(true)、PCなら全表示(false)
+                                        // スマホなら省略(true)、PCなら全表示(false)
                                         autoSkip: isMobile, 
-                                        // ★ スマホの時は最大表示数を制限して見やすくする
+                                        // スマホの時は最大表示数を制限して見やすくする
                                         maxTicksLimit: isMobile ? 15 : undefined,
                                         maxRotation: 45,
                                         minRotation: 45
@@ -181,10 +180,31 @@ export const renderRankingView = () => {
     });
 
     // ==================================================
-    // ★ グループ全体推移データ（ポップアップ用）の生成
+    // グループ全体推移データ（ポップアップ用）の生成
     // ==================================================
     const triggerArea = document.getElementById('groupSummaryTriggerArea');
-    const uniqueDates = [...new Set(filteredLogs.map(l => l.date))].sort();
+    
+    // 歯抜けの日付（0件の日）を補完して連続した日付配列を作る
+    let uniqueDates = [...new Set(filteredLogs.map(l => l.date))].sort();
+    if (uniqueDates.length > 0) {
+        const firstStr = uniqueDates[0];
+        const lastStr = uniqueDates[uniqueDates.length - 1];
+        const [y1, m1, d1] = firstStr.split('/').map(Number);
+        const [y2, m2, d2] = lastStr.split('/').map(Number);
+        
+        let tempD = new Date(y1, m1 - 1, d1);
+        const endD = new Date(y2, m2 - 1, d2);
+        const fullDates = [];
+        while(tempD <= endD) {
+            const yy = tempD.getFullYear();
+            const mm = String(tempD.getMonth() + 1).padStart(2, '0');
+            const dd = String(tempD.getDate()).padStart(2, '0');
+            fullDates.push(`${yy}/${mm}/${dd}`);
+            tempD.setDate(tempD.getDate() + 1);
+        }
+        uniqueDates = fullDates;
+    }
+
     const pageTitleText = document.getElementById('pageTitle')?.textContent || '';
     const isMonthlyView = /^\d{4}\/\d{2}$/.test(pageTitleText) || /^\d{4}年\d{1,2}月$/.test(pageTitleText);
     
@@ -209,12 +229,17 @@ export const renderRankingView = () => {
         const topCounts = {};
 
         uniqueDates.forEach(date => {
-            const data = dailyData[date];
+            // データが存在しない日（29日など）は 0件の空オブジェクトを割り当てる
+            const data = dailyData[date] || { total: 0, members: {} };
             cumulativeTotal += data.total;
             
             let topMembers = [];
-            let maxCount = -1;
+            let maxCount = 0; 
+            
             for (const [name, count] of Object.entries(data.members)) {
+                // 0件のメンバーは計算から完全に除外
+                if (count === 0) continue; 
+                
                 if (count > maxCount) {
                     maxCount = count;
                     topMembers = [name]; 
@@ -229,19 +254,21 @@ export const renderRankingView = () => {
             });
             
             const topMemberStr = topMembers.length > 0 ? topMembers.join('・') : '-';
+            // 誰も送信しなかった日は「(0件)」という表記自体を消す
+            const maxCountDisplay = maxCount > 0 ? `(${maxCount}件)` : ''; 
+            
             const dayStr = date.split('/').pop() + '日';
             
             chartLabels.push(dayStr);
             chartValues.push(data.total);
             chartCumulativeValues.push(cumulativeTotal);
 
-            // ★ ここから累計(cumulativeTotal)の列を削除しました
             tableHtml += `
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 10px 8px;">${date}</td>
                     <td style="padding: 10px 8px; font-weight: bold; color: #4b89dc;">${data.total}</td>
                     <td style="padding: 10px 8px; font-size: 0.9em;">
-                        ${topMemberStr} <span style="color:#888; font-size:0.8em; margin-left: 4px;">(${maxCount}件)</span>
+                        ${topMemberStr} <span style="color:#888; font-size:0.8em; margin-left: 4px;">${maxCountDisplay}</span>
                     </td>
                 </tr>
             `;
@@ -254,7 +281,7 @@ export const renderRankingView = () => {
         if (titleEl) titleEl.textContent = `${pageTitleText} グループ全体推移`;
         
         // ==================================================
-        // ★ ここから追加: 矢印ボタンの表示状態を同期する処理
+        // 矢印ボタンの表示状態を同期する処理
         // ==================================================
         const syncButtonState = (mainId, modalId) => {
             const mainBtn = document.getElementById(mainId);
@@ -274,9 +301,6 @@ export const renderRankingView = () => {
         // 左右のボタンそれぞれに対して処理を実行
         syncButtonState('btnPrevPeriod', 'modalBtnPrev');
         syncButtonState('btnNextPeriod', 'modalBtnNext');
-        // ==================================================
-        // ★ 追加ここまで
-        // ==================================================
 
         // トップ回数エリアの更新
         const topCountsArea = document.getElementById('groupSummaryTopCountsArea');
@@ -550,7 +574,9 @@ export const renderRecordPage = () => {
                 const memberLogSet = safeLogsMap[m.name] || new Set();
 
                 for (let d = 1; d <= daysInMonth; d++) {
-                    if (!memberLogSet.has(currY * 10000 + (currM + 1) * 100 + d)) { 
+                    const checkKey = currY * 10000 + (currM + 1) * 100 + d;
+                    // 特例として2026年7月29日は0件でもパーフェクトを剥奪しない
+                    if (!memberLogSet.has(checkKey) && checkKey !== 20260729) { 
                         isPerfect = false; break; 
                     }
                 }
@@ -581,6 +607,12 @@ export const renderRecordPage = () => {
             
             s.duration = (calcStart > state.maxDateObj || edTime - stTime <= 0) ? 0 : Math.round((edTime - stTime) / oneDay) + 1; 
 
+            // アクティブ率の特例補正 (7月29日を分母から除外)
+            const eqDate = new Date('2026/07/29').getTime();
+            if (stTime <= eqDate && eqDate <= edTime && s.duration > 0) {
+                s.duration -= 1;
+            }
+
             let effEndY = s.endDate.getFullYear(), effEndM = s.endDate.getMonth();
             if (effEndY * 100 + effEndM > compYM) { effEndY = compY; effEndM = compM; }
             
@@ -600,7 +632,12 @@ export const renderRecordPage = () => {
                         s.streakMax = tempStreak; s.maxStreakStart = streakStart; s.maxStreakEnd = dateStr; 
                     }
                 } else { 
-                    tempStreak = 0; streakStart = null; 
+                    // 特例として2026/07/29は0件でも連続記録をリセットせず、そのまま維持する（+1はしない）
+                    if (dateStr === '2026/07/29' && tempStreak > 0) {
+                        // 何もしない（tempStreakのカウントを維持したまま翌日へ持ち越し）
+                    } else {
+                        tempStreak = 0; streakStart = null; 
+                    }
                 }
             });
         });
@@ -643,7 +680,19 @@ export const renderRecordPage = () => {
                      : type.startsWith('group') ? "<span style='color:#4b89dc;'>グループ記録</span>"
                      : "<span style='color:#4b89dc;'>日次記録</span>";
 
-        infoEl.innerHTML = `<span>${modeHtml}</span><span>${activePeriodText}</span>`;
+        // 指定された3つの項目の時だけ注意書き用のHTMLを生成する
+        const showNotice = ['streak', 'perfect_months', 'active_rate'].includes(type);
+        const noticeHtml = showNotice 
+            ? `<div style="font-size: 10px; color: #e74c3c; margin-top: 4px; font-weight: normal;">※2026/07/29は特例として集計除外</div>` 
+            : "";
+
+        infoEl.innerHTML = `
+            <span>${modeHtml}</span>
+            <div style="text-align: right;">
+                <span>${activePeriodText}</span>
+                ${noticeHtml}
+            </div>
+        `;
     }
 
     let dataList = []; 
