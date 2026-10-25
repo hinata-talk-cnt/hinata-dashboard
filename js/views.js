@@ -542,9 +542,17 @@ export const renderRecordPage = () => {
             });
             dailyRank.sort((a,b) => b.count - a.count);
             if (dailyRank.length > 0) {
-                const top3Values = [...new Set(dailyRank.map(r => r.count))].slice(0, 3);
-                dailyRank.forEach(r => { 
-                    if (top3Values.includes(r.count)) statsMap[r.name].top3Count++; 
+                let currentRank = 1;
+                dailyRank.forEach((r, idx) => {
+                    // 前の人より件数が少なければ、現在の位置（インデックス + 1）を新しい順位にする
+                    if (idx > 0 && r.count < dailyRank[idx - 1].count) {
+                        currentRank = idx + 1;
+                    }
+                    
+                    // 順位が3位以内ならカウント
+                    if (currentRank <= 3) {
+                        statsMap[r.name].top3Count++;
+                    }
                 });
             }
         });

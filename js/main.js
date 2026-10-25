@@ -271,6 +271,16 @@ function initApp() {
         const dd = String(d.getDate()).padStart(2, '0');
         latestDateDisplay.innerText = `${yyyy}/${mm}/${dd}`;
     }
+
+    // ▼カスタム期間カレンダーの最大値（最新データ日）を自動セット
+    if (state.latestValidDateStr) {
+        // "YYYY/MM/DD" をカレンダー入力用の "YYYY-MM-DD" に変換
+        const maxDateStr = state.latestValidDateStr.replace(/\//g, '-');
+        const startInput = document.getElementById('customStartDate');
+        const endInput = document.getElementById('customEndDate');
+        if (startInput) startInput.setAttribute('max', maxDateStr);
+        if (endInput) endInput.setAttribute('max', maxDateStr);
+    }
 }
 
 /**
@@ -376,6 +386,11 @@ function updateDashboard() {
     else if (state.currentFilter.type === 'year') titleText = `${state.currentFilter.value}年 年間`;
     else if (state.currentFilter.type === 'h1') titleText = `${state.currentFilter.value}年 上半期`;
     else if (state.currentFilter.type === 'h2') titleText = `${state.currentFilter.value}年 下半期`;
+    else if (state.currentFilter.type === 'custom') {
+        // ここで「_」で区切られた文字を分割して「 ～ 」で結び直します
+        const [startStr, endStr] = state.currentFilter.value.split('_');
+        titleText = `${startStr} ～ ${endStr}`;
+    }
     
     // 統計ボックスに数値を反映
     document.getElementById('pageTitle').innerText = titleText;
@@ -393,20 +408,19 @@ function updateDashboard() {
         document.querySelector('.stat-box.blue .stat-sub').innerText = state.currentFilter.type === 'day' ? '合計' : '期間合計';
     }
 
-    // --------------------------------------------------
+// --------------------------------------------------
     // メインビュー上部の「◀ 期間 ▶」ボタンの有効/無効制御
-    // （これ以上過去・未来のデータがない場合はボタンを押せなくする）
     // --------------------------------------------------
     const btnPrev = document.getElementById('btnPrevPeriod');
     const btnNext = document.getElementById('btnNextPeriod');
     btnPrev.disabled = false; 
     btnNext.disabled = false;
     
-    if (state.currentFilter.type === 'month') {
-        const [y, m] = state.currentFilter.value.split('/').map(Number);
-        if (new Date(y, m - 1, 0) < state.minDateObj) btnPrev.disabled = true;
-        if (new Date(y, m, 1) > state.maxDateObj) btnNext.disabled = true;
-    } else if (state.currentFilter.type === 'day') {
+    if (state.currentFilter.type === 'custom') {
+        btnPrev.disabled = true;
+        btnNext.disabled = true;
+    }
+    else if (state.currentFilter.type === 'month') {
         const d = new Date(state.currentFilter.value);
         if (new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1) < state.minDateObj) btnPrev.disabled = true;
         if (new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) > state.maxDateObj) btnNext.disabled = true;
@@ -441,6 +455,31 @@ function bindEvents() {
     // 期間操作
     document.getElementById('btnPrevPeriod').onclick = () => shiftPeriod(-1);
     document.getElementById('btnNextPeriod').onclick = () => shiftPeriod(1);
+    
+    // カスタム期間集計ボタン
+    const btnCustomPeriod = document.getElementById('btnCustomPeriod');
+    if (btnCustomPeriod) {
+        btnCustomPeriod.onclick = () => {
+            const startVal = document.getElementById('customStartDate').value; // "YYYY-MM-DD"形式
+            const endVal = document.getElementById('customEndDate').value;
+            
+            if (!startVal || !endVal) {
+                alert('開始日と終了日を両方入力してください。');
+                return;
+            }
+            if (new Date(startVal) > new Date(endVal)) {
+                alert('開始日は終了日より前の日付にしてください。');
+                return;
+            }
+            
+            // "YYYY-MM-DD" を "YYYY/MM/DD" に変換
+            const startStr = startVal.replace(/-/g, '/');
+            const endStr = endVal.replace(/-/g, '/');
+            
+            // "2024/01/01_2024/01/31" のような形式でフィルターに渡す
+            selectPeriod('custom', `${startStr}_${endStr}`);
+        };
+    }
     
     // モーダル操作
     document.getElementById('btnModalPrev').onclick = () => switchModalMember(-1);

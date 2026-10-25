@@ -93,6 +93,19 @@ export const isDateInPeriod = (dateStr, filter) => {
             return y === Number(val) && m <= 6;
         case 'h2':
             return y === Number(val) && m >= 7;
+        case 'custom': {
+            // val は "2024/01/01_2024/01/31" のような形式で渡ってくる想定
+            const [startStr, endStr] = val.split('_');
+            const targetTime = new Date(y, m - 1, d).getTime();
+            
+            const [sy, sm, sd] = startStr.split('/').map(Number);
+            const startTime = new Date(sy, sm - 1, sd).getTime();
+            
+            const [ey, em, ed] = endStr.split('/').map(Number);
+            const endTime = new Date(ey, em - 1, ed).getTime();
+            
+            return targetTime >= startTime && targetTime <= endTime;
+        }
         default:
             return false;
     }
@@ -119,6 +132,10 @@ export const isActiveMemberInPeriod = (member) => {
         const [y, m] = value.split('/').map(Number);
         pStart = new Date(y, m - 1, 1);
         pEnd = new Date(y, m, 0); // 翌月の0日目で当月末日を取得
+    } else if (type === 'custom') {
+        const [startStr, endStr] = value.split('_');
+        pStart = new Date(startStr);
+        pEnd = new Date(endStr);
     } else {
         const y = Number(value);
         if (type === 'year') {
