@@ -6,6 +6,11 @@ import { openModal, closeModal, openMonthlyRankingModal, openDailyRankingModal, 
 // キャッシュバスティング用：ファイルの読み込み時に常に最新のデータを取得するためのタイムスタンプ
 const DATA_VER = new Date().getTime();
 
+const fetchJson = url => fetch(url).then(res => {
+    if (!res.ok) throw new Error(`${url}: ${res.status}`);
+    return res.json();
+});
+
 /**
  * アプリの起動を管理するメイン関数
  * 外部JSONデータの取得、状態の初期化、UIの初回レンダリング
@@ -14,9 +19,9 @@ const init = async () => {
     try {
         // Promise.all を使い、ログデータとメンバー情報のJSONを並列で取得
         const [logs, addLogs, members] = await Promise.all([
-            fetch(`data.json?v=${DATA_VER}`).then(res => res.json()), 
-            fetch(`add_data.json?v=${DATA_VER}`).then(res => res.json()).catch(() => []), 
-            fetch(`members.json?v=${DATA_VER}`).then(res => res.json())
+            fetchJson(`data.json?v=${DATA_VER}`), 
+            fetchJson(`add_data.json?v=${DATA_VER}`).catch(() => []), 
+            fetchJson(`members.json?v=${DATA_VER}`)
         ]);
         
         const processedAddLogs = addLogs.map(l => ({ ...l, additional: true }));
@@ -243,7 +248,7 @@ function initApp() {
         const memParam = urlParams.get('mem');
         if (memParam && state.memberMap[memParam]) {
             // モーダル（詳細画面）を開いた状態で復元
-            openModal(state.memberMap[memParam], vParam || 'all');
+            openModal(memParam, vParam || 'all:all');
         } else {
             // 期生の絞り込み状態を復元
             const genParam = urlParams.get('gen');
@@ -296,6 +301,17 @@ export function selectPeriod(type, value) {
         const p = value.split('/').map(Number); 
         state.calYear = p[0]; 
         state.calMonth = p[1] - 1; 
+    } else if (type === 'custom') {
+        const [startStr, endStr] = value.split('_');
+        const targetDate = endStr || startStr;
+        const parts = targetDate.split('/');
+        state.calYear = parseInt(parts[0], 10);
+        state.calMonth = parseInt(parts[1], 10);
+
+        const startInput = document.getElementById('customStartDate');
+        const endInput = document.getElementById('customEndDate');
+        if (startInput && startStr) startInput.value = startStr.replace(/\//g, '-');
+        if (endInput && endStr) endInput.value = endStr.replace(/\//g, '-');
     }
     
     // モバイルでサイドバーが開いている場合は閉じる処理
@@ -421,9 +437,13 @@ function updateDashboard() {
         btnNext.disabled = true;
     }
     else if (state.currentFilter.type === 'month') {
-        const d = new Date(state.currentFilter.value);
-        if (new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1) < state.minDateObj) btnPrev.disabled = true;
-        if (new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) > state.maxDateObj) btnNext.disabled = true;
+        const [y, mo] = state.currentFilter.value.split('/').map(Number);
+        if (new Date(y, mo - 1, 0) < state.minDateObj) btnPrev.disabled = true;
+        if (new Date(y, mo, 1) > state.maxDateObj) btnNext.disabled = true;
+    } else if (state.currentFilter.type === 'day') {
+        const [y, mo, dd] = state.currentFilter.value.split('/').map(Number);
+        if (new Date(y, mo - 1, dd - 1) < state.minDateObj) btnPrev.disabled = true;
+        if (new Date(y, mo - 1, dd + 1) > state.maxDateObj) btnNext.disabled = true;
     } else if (['year', 'h1', 'h2'].includes(state.currentFilter.type)) {
          const y = Number(state.currentFilter.value);
          if ((state.currentFilter.type === 'h1' ? new Date(y - 1, 5, 30) : new Date(y - 1, 11, 31)) < state.minDateObj) btnPrev.disabled = true;
@@ -592,7 +612,8 @@ const warningBanner = document.getElementById('mobileWarningBanner');
 const warningText = document.getElementById('warningText');
 
 // 記憶している設定を読み込む
-let isPCView = localStorage.getItem('isPCView') === 'true';
+let isPCView = false;
+try { isPCView = localStorage.getItem('isPCView') === 'true'; } catch (e) {}
 
 // 表示を切り替える関数
 function applyView() {
@@ -622,12 +643,13 @@ applyView();
 if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
         isPCView = !isPCView; // 状態を反転
-        localStorage.setItem('isPCView', isPCView); // 記憶させる
+        try { localStorage.setItem('isPCView', isPCView); } catch (e) {}
         applyView(); // 画面に反映
     });
 }
 
 // シェアボタンを押した時の処理
+const EMOJI_RE = /[\p{Extended_Pictographic}\uFE0F\u200D]/gu;
 const shareBtn = document.getElementById('dynamicShareBtn');
 if (shareBtn) {
     shareBtn.addEventListener('click', function(e) {
@@ -651,11 +673,11 @@ if (shareBtn) {
             }
 
         } else if (mode === 'members') {
-            const modal = document.getElementById('modalOverlay');
-            if (modal && modal.style.display === 'flex' && state.currentModalMember) {
-                titleText += ` [${state.currentModalMember.name} 詳細]`;
+            const modal = document.getElementById('modal');
+            if (modal && modal.style.display === 'block' && state.currentModalMember) {
+                titleText += ` [${state.currentModalMember} 詳細]`;
                 shareParams.append('tab', 'members');
-                shareParams.append('mem', state.currentModalMember.name);
+                shareParams.append('mem', state.currentModalMember);
                 const pVal = document.getElementById('modalPeriodSelector').value;
                 if (pVal && pVal !== 'all') shareParams.append('v', pVal);
             } else {
@@ -671,7 +693,7 @@ if (shareBtn) {
             
             // 1. 選ばれた項目のテキストから絵文字を除去（前後の空白も削除）
             const rawText = selectedOption.text;
-            const rtText = rawText.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '').trim();
+            const rtText = rawText.replace(EMOJI_RE, '').trim();
 
             // 2. 選ばれた項目の親（optgroup）のラベルを取得して「日次記録」などを抽出
             let category = "記録";
@@ -698,7 +720,7 @@ if (shareBtn) {
         // Xの投稿文作成（記録タブ時は全体から絵文字が消えるよう置換）
         let finalText = `${titleText}\n${shareUrl}\n\n#日向坂46メッセージ集計垢\n@hinata_talk_cnt`;
         if (mode === 'records') {
-            finalText = finalText.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '');
+            finalText = finalText.replace(EMOJI_RE, '');
         }
 
         const encodedText = encodeURIComponent(finalText);
@@ -718,3 +740,12 @@ window.openMonthlyRankingModal = openMonthlyRankingModal;
 window.openDailyRankingModal = openDailyRankingModal;
 window.selectPeriod = selectPeriod;
 window.shiftModalPeriod = shiftModalPeriod;
+window.updateModalContent = updateModalContent;
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const overlay = document.getElementById('modalOverlay');
+    if (!overlay || overlay.style.display !== 'block') return;
+    closeModal();
+    if (window.closeGroupSummaryModal) window.closeGroupSummaryModal();
+});

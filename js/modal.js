@@ -107,6 +107,7 @@ export const openDailyRankingModal = (dateStr) => {
  * @param {string|null} preferredPeriod - 初期選択させたい期間（例: 'month:2024/01'）
  */
 export const openModal = (name, preferredPeriod = null) => {
+    if (!state.memberMap[name]) return;
     document.body.classList.add('no-scroll');
     state.currentModalMember = name;
     

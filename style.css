@@ -119,7 +119,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
     .nav-btn { padding: 10px 5px; font-size: 12px; gap: 5px; }
 
     .stats-row, .stats-row.daily-mode { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .stats-row.daily-mode .stat-box.orange, .stats-row.daily-mode .stat-box.green { display: none; }
     .stat-box { padding: 12px 5px; }
     .stat-val {
         height: auto !important;
@@ -305,7 +304,7 @@ select { padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; backgrou
    モーダル
    ========================================= */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: var(--z-overlay); backdrop-filter: blur(2px); }
-.modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 95%; max-width: 950px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: var(--z-modal); max-height: 95vh; overflow-y: auto; }
+.modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 95%; max-width: 950px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: var(--z-modal); max-height: 95vh; max-height: 95dvh; overflow-y: auto; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
 .close-btn { border: none; background: none; font-size: 28px; cursor: pointer; color: #999; transition: color var(--transition-speed); }
 .close-btn:hover { color: #333; }
@@ -357,3 +356,9 @@ select { padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; backgrou
 .info-list-value { color: #333; font-weight: bold; }
 .info-list-link { display: flex; align-items: center; gap: 4px; color: #333; text-decoration: none; font-weight: bold; padding: 4px 8px; background: #fff; border-radius: 4px; border: 1px solid #ddd; transition: 0.2s; }
 .info-list-link:hover { background: #eee; }
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .updating-badge { animation: none; }
+    .sidebar, .sidebar-overlay, .bar-fill { transition: none; }
+}

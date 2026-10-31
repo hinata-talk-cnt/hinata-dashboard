@@ -147,14 +147,14 @@ window.changeMonthFromModal = (direction) => {
     }
 
     // メイン画面の再集計が終わるのを一瞬だけ待ってからポップアップを更新
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         // 移動先の月にデータが存在すればグラフを描画し直す（データが無い場合はポップアップを閉じる）
         if (window.groupSummaryChartData) {
             window.openGroupSummaryModal();
         } else {
             window.closeGroupSummaryModal();
         }
-    }, 50);
+    });
 };
 // ==================================================
 // ▲▲▲ ここまで追加 ▲▲▲
@@ -206,7 +206,7 @@ export const renderRankingView = () => {
     }
 
     const pageTitleText = document.getElementById('pageTitle')?.textContent || '';
-    const isMonthlyView = /^\d{4}\/\d{2}$/.test(pageTitleText) || /^\d{4}年\d{1,2}月$/.test(pageTitleText);
+    const isMonthlyView = state.currentFilter.type === 'month';
     
     if (isMonthlyView && uniqueDates.length > 0) {
         if (triggerArea) triggerArea.style.display = 'block';
@@ -816,21 +816,14 @@ export const renderRecordPage = () => {
     // 個別ランキングのHTML生成処理
     // --------------------------------------------------
     } else if (type === 'wins') {
-        const dailyWins = {}; const dates = new Set();
-        filteredLogs.forEach(l => { if (statsMap[l.name] && (Number(l.count) || 0) > 0) dates.add(l.date); });
-        
-        Array.from(dates).forEach(date => {
-            let maxInDay = 0; const recs = [];
-            filteredLogs.forEach(l => { 
-                if (statsMap[l.name] && l.date === date) { 
-                    const c = Number(l.count) || 0; 
-                    if (c > maxInDay) maxInDay = c; 
-                    recs.push({name: l.name, count: c}); 
-                }
-            });
-            if (maxInDay > 0) { 
-                recs.forEach(r => { if (r.count === maxInDay) dailyWins[r.name] = (dailyWins[r.name] || 0) + 1; }); 
-            }
+        const dailyWins = {}; const byDate = {};
+        filteredLogs.forEach(l => {
+            if (!statsMap[l.name]) return;
+            (byDate[l.date] = byDate[l.date] || []).push({ name: l.name, count: Number(l.count) || 0 });
+        });
+        Object.values(byDate).forEach(recs => {
+            const maxInDay = Math.max(...recs.map(r => r.count));
+            if (maxInDay > 0) recs.forEach(r => { if (r.count === maxInDay) dailyWins[r.name] = (dailyWins[r.name] || 0) + 1; });
         });
         
         dataList = Object.entries(dailyWins)

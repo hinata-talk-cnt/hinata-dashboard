@@ -37,6 +37,7 @@ export const renderCalendarWidget = () => {
     // ----------------------------------------------------
     const daily = {};
     state.allLogs.forEach(l => { 
+        if (l.additional) return;
         const p = l.date.split('/').map(Number);
         if (p[0] === state.calYear && p[1] === (state.calMonth + 1)) { 
             daily[p[2]] = (daily[p[2]] || 0) + (Number(l.count) || 0); 

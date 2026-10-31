@@ -150,6 +150,8 @@ export const isActiveMemberInPeriod = (member) => {
         }
     }
 
+    if (!pStart || !pEnd) return true;
+
     // 時刻を 00:00:00.000 と 23:59:59.999 に統一セット
     pStart.setHours(0, 0, 0, 0);
     pEnd.setHours(23, 59, 59, 999);

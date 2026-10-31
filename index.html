@@ -31,7 +31,7 @@
         gtag('config', 'G-ZYQHLZR55J');
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.js" defer></script>
     
     <style>
         body { margin: 0; background-color: #f4f7f6; }
@@ -158,9 +158,9 @@
             <div class="card-header">📅 カスタム期間</div>
             <div style="padding: 15px; display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                <input type="date" id="customStartDate" min="2023-11-01" onkeydown="return false" onclick="this.showPicker()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; width: 45%; cursor: pointer;">
+                <input type="date" id="customStartDate" aria-label="開始日" min="2023-11-01" onkeydown="if(event.key!=='Tab')return false" onclick="this.showPicker&&this.showPicker()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; width: 45%; cursor: pointer;">
                 <span style="color: #888;">～</span>
-                <input type="date" id="customEndDate" min="2023-11-01" onkeydown="return false" onclick="this.showPicker()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; width: 45%; cursor: pointer;">
+                <input type="date" id="customEndDate" aria-label="終了日" min="2023-11-01" onkeydown="if(event.key!=='Tab')return false" onclick="this.showPicker&&this.showPicker()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; width: 45%; cursor: pointer;">
                 </div>
                 <button type="button" id="btnCustomPeriod" style="padding: 8px; background: var(--accent-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">この期間で集計</button>
             </div>
@@ -265,7 +265,7 @@
 
 <div id="modalOverlay" class="modal-overlay"></div>
 
-<div id="modal" class="modal" role="dialog" aria-modal="true">
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalName">
     <div class="modal-head" style="position: relative; padding: 20px 10px 15px; display: flex; flex-direction: column; align-items: center;">
         
         <button type="button" class="close-btn modal-close-btn-sub" onclick="window.closeModal()" aria-label="閉じる" style="position: absolute; top: 10px; right: 15px; z-index: 100; border: none; background: none; font-size: 26px; cursor: pointer; color: #666; padding: 0; line-height: 1;">×</button>
@@ -319,7 +319,7 @@
     <div class="chart-box"><canvas id="personalChart"></canvas></div>
 </div>
 
-<div id="dailyModal" class="modal" role="dialog" aria-modal="true">
+<div id="dailyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="dailyModalTitle">
     <div class="modal-head">
         <div class="modal-title-col">
             <h2 id="dailyModalTitle" style="margin:0; font-size:18px;"></h2>
@@ -330,7 +330,7 @@
 </div>
 
 <!-- ====== グループ全体推移用のモーダル ====== -->
-<div id="groupSummaryModal" class="modal" role="dialog" aria-modal="true" style="max-width: 800px; display: none;">
+<div id="groupSummaryModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="groupSummaryModalTitle" style="max-width: 800px; display: none;">
         <div class="modal-head">
         <div class="modal-title-col" style="display: flex; align-items: center; gap: 15px;">
             <button type="button" id="modalBtnPrev" onclick="window.changeMonthFromModal(-1)" style="background: none; border: none; cursor: pointer; color: #4b89dc; font-size: 16px; padding: 4px;">◀</button>
@@ -368,7 +368,11 @@
 </div>
 
 <script type="module">
-    import(`./js/main.js?v=${new Date().getTime()}`).catch(console.error);
+    import(`./js/main.js?v=${new Date().getTime()}`).catch(err => {
+        console.error(err);
+        const mask = document.getElementById('loadingMask');
+        if (mask) mask.innerHTML = '<div class="loading-text">読み込みに失敗しました。再読み込みしてください。</div>';
+    });
 </script>
 
 <script>
