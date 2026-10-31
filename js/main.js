@@ -333,6 +333,13 @@ export function selectPeriod(type, value) {
         updateDashboard(); 
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
     });
+
+    // URLを現在の表示に合わせて自動更新する
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('t', type);
+    currentUrl.searchParams.set('v', value);
+    // ページ遷移なしでURLバーの表示だけを書き換える
+    window.history.pushState(null, '', currentUrl.toString()); 
 }
 
 /**
