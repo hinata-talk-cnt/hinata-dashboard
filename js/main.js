@@ -306,8 +306,9 @@ export function selectPeriod(type, value) {
         const targetDate = endStr || startStr;
         const parts = targetDate.split('/');
         state.calYear = parseInt(parts[0], 10);
-        state.calMonth = parseInt(parts[1], 10);
+        state.calMonth = parseInt(parts[1], 10) - 1;
 
+        // リンクから飛んできた時に入力欄にも日付を入れておく
         const startInput = document.getElementById('customStartDate');
         const endInput = document.getElementById('customEndDate');
         if (startInput && startStr) startInput.value = startStr.replace(/\//g, '-');
