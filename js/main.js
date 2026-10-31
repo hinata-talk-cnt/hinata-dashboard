@@ -349,18 +349,44 @@ export function selectPeriod(type, value) {
 function setAppMode(m) {
     state.currentAppMode = m; 
     
-    // ナビゲーションボタンのアクティブ状態を切り替え
     document.getElementById('navAnalytics').classList.toggle('active', m === 'analytics');
     document.getElementById('navMembers').classList.toggle('active', m === 'members');
     document.getElementById('navRecords').classList.toggle('active', m === 'records'); 
     
-    // 上部の4つの統計ボックスは「データタブ」の時のみ表示
     document.getElementById('topStatsRow').style.display = m === 'analytics' ? 'grid' : 'none';
     
-    // 各ビュー（コンテンツ領域）の表示/非表示を切り替え
     document.getElementById('viewAnalytics').classList.toggle('active', m === 'analytics');
     document.getElementById('viewMembers').classList.toggle('active', m === 'members');
     document.getElementById('viewRecords').classList.toggle('active', m === 'records'); 
+
+    // 現在のタブに必要な情報だけでクリーンなURLを再構築する
+    const currentUrl = new URL(window.location);
+    const cleanParams = new URLSearchParams();
+    cleanParams.set('tab', m);
+    
+    if (m === 'analytics') {
+        if (state.currentFilter.type !== 'all') {
+            cleanParams.set('t', state.currentFilter.type);
+            cleanParams.set('v', state.currentFilter.value);
+        }
+    } else if (m === 'members') {
+        const modal = document.getElementById('modal');
+        if (modal && modal.style.display === 'block' && state.currentModalMember) {
+            cleanParams.set('mem', state.currentModalMember);
+            const pVal = document.getElementById('modalPeriodSelector').value;
+            if (pVal && pVal !== 'all') cleanParams.set('v', pVal);
+        } else {
+            const genVal = document.getElementById('genSelector2').value;
+            if (genVal !== 'all') cleanParams.set('gen', genVal);
+        }
+    } else if (m === 'records') {
+        cleanParams.set('rt', document.getElementById('recordTypeSelector').value);
+        const cb = document.getElementById('recordSince5thGen');
+        if (cb && cb.checked) cleanParams.set('5th', '1');
+    }
+    
+    currentUrl.search = cleanParams.toString();
+    window.history.pushState(null, '', currentUrl.toString());
 }
 
 /**
@@ -521,11 +547,27 @@ function bindEvents() {
     // プルダウン変更
     document.getElementById('genSelector').onchange = renderRankingView;
     document.getElementById('genSelector2').onchange = renderMemberCatalog;
-    document.getElementById('recordTypeSelector').onchange = renderRecordPage;
+    document.getElementById('recordTypeSelector').onchange = () => {
+        renderRecordPage();
+        // プルダウン切り替え時にURLの rt パラメータを更新する
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('rt', document.getElementById('recordTypeSelector').value);
+        window.history.pushState(null, '', currentUrl.toString());
+    };
 
     // 5期生比較チェックボックスのイベントリスナー
     const recordSince5thGen = document.getElementById('recordSince5thGen');
-    if (recordSince5thGen) recordSince5thGen.onchange = renderRecordPage;
+    if (recordSince5thGen) recordSince5thGen.onchange = () => {
+        renderRecordPage();
+        // チェックボックス切り替え時にもURLを更新する
+        const currentUrl = new URL(window.location);
+        if (recordSince5thGen.checked) {
+            currentUrl.searchParams.set('5th', '1');
+        } else {
+            currentUrl.searchParams.delete('5th');
+        }
+        window.history.pushState(null, '', currentUrl.toString());
+    };
 
     // カレンダーの日付マス（.cal-day）クリック時のイベント委譲
     // （マスごとにイベントを登録するのではなく、親要素で一括キャッチすることで軽量化）
